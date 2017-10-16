@@ -34,11 +34,13 @@ for (i,c) in enumerate(npaContours):
     if cv2.contourArea(c) > MIN_CONTOUR_AREA:
         roi = imgTemplate[y:y+h, x:x+w]
         ###########
+
         refGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
         refBlur = cv2.GaussianBlur(refGray, (1,1), 0)
-        refCanny = cv2.Canny(refBlur, 30,50)
-        refThresh = cv2.adaptiveThreshold(refCanny, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-
+        refCanny = cv2.Canny(refBlur, 30, 50)
+        #cv2.imshow("cannyTemplate" + str(i), refCanny)
+        ret, refThresh = cv2.threshold(refCanny, 10, 255, cv2.THRESH_BINARY)
+        #cv2.imshow("ThreshTemplate" + str(i), refThresh)
         ###########
         roi = cv2.resize(refThresh, (250, 100))
         digits[i] = roi
