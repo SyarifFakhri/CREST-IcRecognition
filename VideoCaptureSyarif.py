@@ -48,13 +48,15 @@ for (i,c) in enumerate(digits):
     cv2.imshow('template' + str(i), template[i])
 #getting image test and zoom the get the contour
 
+arrayOfResults = []
+
 while True:
     #End getting of template
 
     ret, frame = cap.read()
 
     img = frame
-    #img = cv2.imread('test2skewed.jpg')
+    # img = cv2.imread('test0.jpg')
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
@@ -129,7 +131,7 @@ while True:
             # 	angle = angle + 90
 
             #cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
-            cv2.drawContours(img,contours,-1, (0,255,0),1)
+            #cv2.drawContours(img,contours,-1, (0,255,0),1)
             #cv2.drawContours(img,npaContours,-1,(255,0,0),1)
             #need to deskew the contours
             #print(contours)
@@ -180,12 +182,12 @@ while True:
 
             #set the ROI based on the rotated image
             roi = img[y:y+h, x:x+w]
-            #cv2.imshow("roi2", roi)
+            cv2.imshow("roi2", roi)
 
             imggray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            #imgblur = cv2.GaussianBlur(imggray, (1,1), 0)
+            imgblur = cv2.GaussianBlur(imggray, (1,1), 0)
 
-            imgthresh = cv2.adaptiveThreshold(imggray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+            imgthresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
             roi = cv2.resize(imgthresh, (250,100))
             cv2.imshow('roi', roi)
@@ -200,10 +202,19 @@ while True:
                 #print(score)
                 scores.append(score)
 
+            arrayOfResults.append(str(np.argmax(scores)))
             groupOutput.append(str(np.argmax(scores)))
+
+            #return the most frequent of 10 results
+            if len(arrayOfResults) == 1:
+                counts = np.bincount(arrayOfResults)
+                string = str(np.argmax(counts))
+                cv2.putText(img, "Type " + "".join(string), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                cv2.imshow('final', img)
+                arrayOfResults = []
+            # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            # cv2.imshow('final', img)
             #print('type detected : ' + "".join(groupOutput))
-            cv2.putText(img, "Type " + "".join(groupOutput), (x, y ), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            cv2.imshow('final', img)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
@@ -211,6 +222,7 @@ while True:
 cap.release()
 #out.release()
 cv2.destroyAllWindows()
+
 '''
 cv2.waitKey(0)
 cv2.destroyAllWindows()
