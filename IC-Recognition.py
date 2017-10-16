@@ -191,7 +191,7 @@ while True:
             imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
             #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
-
+#testing
             roi = cv2.resize(imgThresh, (250,100))
             cv2.imshow('roi', roi)
 
