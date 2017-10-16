@@ -9,10 +9,9 @@ import imutils
 
 MIN_CONTOUR_AREA = 500
 #kernel = np.ones((1,1), np.uint8)
-
+"COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
 #TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
-
 #Begin Getting of Template
 img = cv2.imread('component.jpg')
 img = imutils.resize(img, width=300)
