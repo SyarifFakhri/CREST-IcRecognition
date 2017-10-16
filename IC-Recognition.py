@@ -203,12 +203,12 @@ while True:
             groupOutput = []
 
             for(templateCount, templateROI) in template.items():
-                result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF)
+                result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
                 #print(result)
                 (_,score,_,_) = cv2.minMaxLoc(result)
                 #print(score)
                 scores.append(score)
-
+            print(scores)
             arrayOfResults.append(str(np.argmax(scores)))
             groupOutput.append(str(np.argmax(scores)))
 
