@@ -11,7 +11,7 @@ MIN_CONTOUR_AREA = 500
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
-#TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
+
 #Begin Getting of Template
 imgTemplate = cv2.imread('component.jpg')
 imgTemplate = imutils.resize(imgTemplate, width=300)
@@ -21,7 +21,7 @@ imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5,5), 0)                        
 
 # filter image from grayscale to black and white
 imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-cv2.imshow('thres',imgTemplate)
+#cv2.imshow('thres',imgCanny)
 
 imgThreshCopy = imgThresh.copy()
 imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -34,11 +34,13 @@ for (i,c) in enumerate(npaContours):
     if cv2.contourArea(c) > MIN_CONTOUR_AREA:
         roi = imgTemplate[y:y+h, x:x+w]
         ###########
-        refgray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        refblur = cv2.GaussianBlur(refgray, (1,1), 0)
-        refthresh = cv2.adaptiveThreshold(refblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+        refGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        refBlur = cv2.GaussianBlur(refGray, (1,1), 0)
+        refCanny = cv2.Canny(refBlur, 30,50)
+        refThresh = cv2.adaptiveThreshold(refCanny, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+
         ###########
-        roi = cv2.resize(refthresh, (250, 100))
+        roi = cv2.resize(refThresh, (250, 100))
         digits[i] = roi
 
 #saving templates in sorted dictionary
@@ -108,10 +110,10 @@ while True:
         found = False
         for npaContour in npaContours:
             if cv2.contourArea(npaContour) == arrayOfContourAreas[biggestIndex] and cv2.contourArea(npaContour) != 0:
-                print(cv2.contourArea(npaContour), arrayOfContourAreas[biggestIndex])
+                #print(cv2.contourArea(npaContour), arrayOfContourAreas[biggestIndex])
                 contours = npaContour
                 found = True
-                print("found!")
+                #print("found!")
                 #break the inner loop
                 break
                 #the point of this else and break is so that I can break out of 2 loops, the inner if loop and the outer for loop, if not break will only break the if loop and not the foor loop
@@ -188,11 +190,11 @@ while True:
 
             #imgDenoised = cv2.fastNlMeansDenoising(roi, None,10,10,7,21)
             imgblur = cv2.GaussianBlur(imgGray, (1,1), 0)
-            imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+            imgCanny = cv2.Canny(imgblur, 30, 60)
+            imgThresh = cv2.adaptiveThreshold(imgCanny, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
             #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
-#testing
-            roi = cv2.resize(imgThresh, (250,100))
+            roi = cv2.resize(imgCanny, (250,100))
             cv2.imshow('roi', roi)
 
             scores = []
