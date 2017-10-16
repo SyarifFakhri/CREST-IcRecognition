@@ -55,7 +55,7 @@ while True:
     ret, frame = cap.read()
 
     img = frame
-    # img = cv2.imread('test0.jpg')
+    img = cv2.imread('test0.jpg')
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
@@ -199,10 +199,10 @@ while True:
             groupOutput = []
 
             for(templateCount, templateROI) in template.items():
-                result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF)
+                result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
                 #print(result)
                 (_,score,_,_) = cv2.minMaxLoc(result)
-                #print(score)
+                print(score)
                 scores.append(score)
 
             arrayOfResults.append(str(np.argmax(scores)))
