@@ -13,16 +13,16 @@ MIN_CONTOUR_AREA = 500
 cap = cv2.VideoCapture(0)
 #TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
 #Begin Getting of Template
-img = cv2.imread('component.jpg')
-img = imutils.resize(img, width=300)
+imgTemplate = cv2.imread('component.jpg')
+imgTemplate = imutils.resize(imgTemplate, width=300)
 
-imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)          # get grayscale image
-imgBlurred = cv2.GaussianBlur(imgGray, (5,5), 0)                        # blur
+imgGrayTemplate = cv2.cvtColor(imgTemplate, cv2.COLOR_BGR2GRAY)          # get grayscale image
+imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5,5), 0)                        # blur
 
 # filter image from grayscale to black and white
 imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+cv2.imshow('thres',imgTemplate)
 
-cv2.imshow('thres',img)
 imgThreshCopy = imgThresh.copy()
 imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 digits = {}
@@ -32,7 +32,7 @@ for (i,c) in enumerate(npaContours):
                                         # if contour is big enough to consider
     [x, y, w, h] = cv2.boundingRect(c)
     if cv2.contourArea(c) > MIN_CONTOUR_AREA:
-        roi = img[y:y+h, x:x+w]
+        roi = imgTemplate[y:y+h, x:x+w]
         ###########
         refgray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
         refblur = cv2.GaussianBlur(refgray, (1,1), 0)
@@ -60,15 +60,15 @@ while True:
 
     #Get the image threshold
     img = imutils.resize(img, width=300)
-    imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)          # get grayscale image
+    imgGrayTemplate = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)          # get grayscale image
 
     # something to play with here, where you use a closing operation followed by a dividing operation to get a uniform brightness
-    # close = cv2.morphologyEx(imgGray, cv2.MORPH_CLOSE, kernel)
+    # close = cv2.morphologyEx(imgGrayTemplate, cv2.MORPH_CLOSE, kernel)
     # cv2.imshow("closed", close)
-    # div = np.float32(imgGray)/(close)
+    # div = np.float32(imgGrayTemplate)/(close)
     # cv2.imshow("divided",div)
 
-    imgBlurred = cv2.GaussianBlur(imgGray, (5,5), 0)
+    imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5,5), 0)
     imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
     #open to remove noise
@@ -183,12 +183,16 @@ while True:
             roi = img[y:y+h, x:x+w]
             cv2.imshow("roi2", roi)
 
-            imggray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            imgblur = cv2.GaussianBlur(imggray, (1,1), 0)
+            imgGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
 
-            imgthresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+            #imgDenoised = cv2.fastNlMeansDenoising(roi, None,10,10,7,21)
+            imgblur = cv2.GaussianBlur(imgGray, (1,1), 0)
+            imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
-            roi = cv2.resize(imgthresh, (250,100))
+            #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
+
+            roi = cv2.resize(imgThresh, (250,100))
             cv2.imshow('roi', roi)
 
             scores = []
@@ -205,7 +209,7 @@ while True:
             groupOutput.append(str(np.argmax(scores)))
 
             #return the most frequent of 10 results
-            if len(arrayOfResults) == 1:
+            if len(arrayOfResults) == 10:
                 counts = np.bincount(arrayOfResults)
                 string = str(np.argmax(counts))
                 cv2.putText(img, "Type " + "".join(string), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
