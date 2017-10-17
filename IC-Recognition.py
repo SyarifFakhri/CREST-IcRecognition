@@ -11,21 +11,21 @@ MIN_CONTOUR_AREA = 500
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
+
 amountOfTemplatesPerIc = 2
 amountOfIcsToDetect = 3
 #right now the component images are the same, but this is more for proof of concept purposes
-#The templates also need to be named as 'component0.jpg', then 'component1.jpg' etc
-#right now it's hard coded how many it detects, but we can make it not hardcoded later!
-#The IC's to group together are the first IC of each component
+#The templates also needs to be named as 'component0.jpg', then 'component1.jpg' etc
+#right now it's hard coded how many it detects, but we can make it not hardcoded later! - can use pathfinding for this
+#The IC's to group together are the corresponding IC's of each component
 #That means it would be IC 0 and IC 3, IC 1 and IC 4, IC 2 and IC 6 in the dictionary
 #try take the mean values between them? or the highest value overall
-
+#ideally each of the components should be in different images/folders - instead of 1 image, but this more a proof of concept
 #TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
 
 template = {}
 i = 0
 #template should contain a 3*2 6 digit entry of what the compnonents are
-#ideally the components should be in different images/folders - instead of 1 image, but this more a proof of concept
 
 for x in range(amountOfTemplatesPerIc):
 
