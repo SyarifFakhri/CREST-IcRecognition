@@ -4,7 +4,6 @@ import numpy as np
 import imutils
 
 MIN_CONTOUR_AREA = 500
-
 #Begin Getting of Template
 imgTemplate = cv2.imread('component.jpg')
 imgTemplate = imutils.resize(imgTemplate, width=300)
