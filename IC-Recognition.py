@@ -8,6 +8,7 @@ import imutils
 
 
 MIN_CONTOUR_AREA = 500
+acceptedThreshold = 0.1
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
@@ -212,7 +213,11 @@ while True:
             if len(arrayOfResults) == 10:
                 counts = np.bincount(arrayOfResults)
                 string = str(np.argmax(counts))
-                cv2.putText(img, "Type " + "".join(string), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                #only show if it's above the acceptable threshold
+                if max(scores) > acceptedThreshold:
+                    cv2.putText(img, "Type " + "".join(string), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                else:
+                    cv2.putText(img, "No IC found!", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 cv2.imshow('final', img)
                 arrayOfResults = []
             # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
