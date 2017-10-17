@@ -11,41 +11,53 @@ MIN_CONTOUR_AREA = 500
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
+amountOfTemplatesPerIc = 2
+#right now the component images are the same, but this is more for proof of concept purposes
+#The templates also need to be named as 'component0.jpg', then 'component1.jpg' etc
+#right now it's hard coded how many it detects, but we can make it not hardcoded later!
 #TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
-#Begin Getting of Template
-imgTemplate = cv2.imread('component.jpg')
-imgTemplate = imutils.resize(imgTemplate, width=300)
 
-imgGrayTemplate = cv2.cvtColor(imgTemplate, cv2.COLOR_BGR2GRAY)          # get grayscale image
-imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5,5), 0)                        # blur
-
-# filter image from grayscale to black and white
-imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-cv2.imshow('thres',imgTemplate)
-
-imgThreshCopy = imgThresh.copy()
-imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-digits = {}
 template = {}
+i = 0
+#template should contain a 3*2 6 digit entry of what the compnonents are
+#ideally the components should be in different images/folders - instead of 1 image, but this more a proof of concept
 
-for (i,c) in enumerate(npaContours):
-                                        # if contour is big enough to consider
-    [x, y, w, h] = cv2.boundingRect(c)
-    if cv2.contourArea(c) > MIN_CONTOUR_AREA:
-        roi = imgTemplate[y:y+h, x:x+w]
-        ###########
-        refGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        refBlur = cv2.GaussianBlur(refGray, (1,1), 0)
-        refThresh = cv2.adaptiveThreshold(refBlur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-        ###########
-        roi = cv2.resize(refThresh, (250, 100))
-        digits[i] = roi
+for x in range(amountOfTemplatesPerIc):
 
-#saving templates in sorted dictionary
-for (i,c) in enumerate(digits):
-    template[i] = digits[c]
-    cv2.imshow('template' + str(i), template[i])
-#getting image test and zoom the get the contour
+    digits = {}
+    #Begin Getting of Template
+    string = 'component' + str(x) + '.jpg'
+    imgTemplate = cv2.imread(string)
+    imgTemplate = imutils.resize(imgTemplate, width=300)
+
+    imgGrayTemplate = cv2.cvtColor(imgTemplate, cv2.COLOR_BGR2GRAY)          # get grayscale image
+    imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5,5), 0)                        # blur
+
+    # filter image from grayscale to black and white
+    imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+    cv2.imshow('thres',imgTemplate)
+
+    imgThreshCopy = imgThresh.copy()
+    imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    for (e,c) in enumerate(npaContours):
+        # if contour is big enough to consider
+        [x, y, w, h] = cv2.boundingRect(c)
+        if cv2.contourArea(c) > MIN_CONTOUR_AREA:
+            roi = imgTemplate[y:y+h, x:x+w]
+            ###########
+            refGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            refBlur = cv2.GaussianBlur(refGray, (1,1), 0)
+            refThresh = cv2.adaptiveThreshold(refBlur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+            ###########
+            roi = cv2.resize(refThresh, (250, 100))
+            digits[e] = roi
+
+    #saving templates in sorted dictionary
+    for c in digits:
+        template[i] = digits[c]
+        cv2.imshow('template' + str(i), template[i])
+        i = i + 1
 
 arrayOfResults = []
 
