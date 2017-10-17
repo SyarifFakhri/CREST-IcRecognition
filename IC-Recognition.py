@@ -2,6 +2,7 @@ import cv2
 from imutils import contours
 import numpy as np
 import imutils
+
 #import os
 #import sys
 #from PIL import Image
@@ -226,9 +227,6 @@ while True:
             for x in range(amountOfIcsToDetect):
                 meanScore = (scores[x] + scores[x + amountOfIcsToDetect])/2
                 combinedScores.append(meanScore)
-
-            print(scores)
-            print(combinedScores)
 
             arrayOfResults.append(str(np.argmax(combinedScores)))
             groupOutput.append(str(np.argmax(combinedScores)))
