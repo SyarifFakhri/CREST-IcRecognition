@@ -12,9 +12,14 @@ MIN_CONTOUR_AREA = 500
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
 amountOfTemplatesPerIc = 2
+amountOfIcsToDetect = 3
 #right now the component images are the same, but this is more for proof of concept purposes
 #The templates also need to be named as 'component0.jpg', then 'component1.jpg' etc
 #right now it's hard coded how many it detects, but we can make it not hardcoded later!
+#The IC's to group together are the first IC of each component
+#That means it would be IC 0 and IC 3, IC 1 and IC 4, IC 2 and IC 6 in the dictionary
+#try take the mean values between them? or the highest value overall
+
 #TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
 
 template = {}
@@ -203,25 +208,33 @@ while True:
             imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
             #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
-#testing
+
             roi = cv2.resize(imgThresh, (250,100))
             cv2.imshow('roi', roi)
 
             scores = []
             groupOutput = []
 
-            for(templateCount, templateROI) in template.items():
-                result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
+            for(templateCount, templateRoi) in template.items():
+                result = cv2.matchTemplate(roi, templateRoi, cv2.TM_CCOEFF_NORMED)
                 #print(result)
                 (_,score,_,_) = cv2.minMaxLoc(result)
-                print(score)
                 scores.append(score)
+            #need to group together the results of the different templates of the ICs
+            #rn this algorithm takes the mean of both results - should try max in both for e.g. and see the results for either!
+            combinedScores = []
+            for x in range(amountOfIcsToDetect):
+                meanScore = (scores[x] + scores[x + amountOfIcsToDetect])/2
+                combinedScores.append(meanScore)
 
-            arrayOfResults.append(str(np.argmax(scores)))
-            groupOutput.append(str(np.argmax(scores)))
+            print(scores)
+            print(combinedScores)
 
-            #return the most frequent of 10 results
-            if len(arrayOfResults) == 10:
+            arrayOfResults.append(str(np.argmax(combinedScores)))
+            groupOutput.append(str(np.argmax(combinedScores)))
+
+            #return the most frequent of x results
+            if len(arrayOfResults) == 1:
                 counts = np.bincount(arrayOfResults)
                 string = str(np.argmax(counts))
                 cv2.putText(img, "Type " + "".join(string), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
