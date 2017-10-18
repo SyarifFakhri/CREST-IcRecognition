@@ -42,7 +42,7 @@ while True:
     ret, frame = cap.read()
 
     img = frame
-    img = cv2.imread('testTemplate9.png')
+    img = cv2.imread('testTemplate2.png')
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
