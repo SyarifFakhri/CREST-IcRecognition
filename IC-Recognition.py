@@ -9,12 +9,10 @@ from pathlib import Path
 
 
 MIN_CONTOUR_AREA = 500
-#kernel = np.ones((1,1), np.uint8)
+#kernel = np.ones((1,1), np.uint8
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
-#TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
-#TODO - Pre load the templates so that you don't have to calculate them!
-
+#TODO - Sort according to size first
 #Begin Getting of Template
 template = {}
 i = 0
@@ -44,7 +42,7 @@ while True:
     ret, frame = cap.read()
 
     img = frame
-    #img = cv2.imread('test0.jpg')
+    img = cv2.imread('testTemplate9.png')
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
