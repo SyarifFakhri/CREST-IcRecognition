@@ -12,7 +12,7 @@ acceptedThreshold = 0.1
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(0)
-#TODO - Need to find a way to only initialize the components once! instead of it being in the for loop continously, which is not eficient!
+#TODO - Sort according to size first
 #Begin Getting of Template
 imgTemplate = cv2.imread('component.jpg')
 imgTemplate = imutils.resize(imgTemplate, width=300)
@@ -35,11 +35,11 @@ for (i,c) in enumerate(npaContours):
     if cv2.contourArea(c) > MIN_CONTOUR_AREA:
         roi = imgTemplate[y:y+h, x:x+w]
         ###########
-        refGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        refBlur = cv2.GaussianBlur(refGray, (1,1), 0)
-        refThresh = cv2.adaptiveThreshold(refBlur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+        refgray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        refblur = cv2.GaussianBlur(refgray, (1,1), 0)
+        refthresh = cv2.adaptiveThreshold(refblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
         ###########
-        roi = cv2.resize(refThresh, (250, 100))
+        roi = cv2.resize(refthresh, (250, 100))
         digits[i] = roi
 
 #saving templates in sorted dictionary
@@ -56,7 +56,7 @@ while True:
     ret, frame = cap.read()
 
     img = frame
-    #img = cv2.imread('test0.jpg')
+    img = cv2.imread('testTemplate2.png')
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
