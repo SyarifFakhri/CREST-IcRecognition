@@ -12,26 +12,50 @@ acceptedThreshold = 0.1
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(1)
-#TODO - Sort according to size first
+cap.set(15, 10)
+
+#TODO - Sort according to size first then sort according to type
 template = {}
+arrayOfResults = []
+
+def binarizeImage(img):
+    #This will extract features for template and second phase matching
+    """This function converts the image to gray, puts a gaussian blur, inverts the image (for thresh to zero) then does a thresh to zero"""
+    #Not sure why it's a thresh to zero, maybe a binarize would be better - but for now this is just refactoring so just roll with it
+    #This should also be based on automatic parameter matching
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    cv2.imshow("before histomgram equalized", img)
+    img = cv2.equalizeHist(img)
+    print("mean ", cv2.mean(img))
+    cv2.imshow("histogram equalized", img)
+    img = cv2.GaussianBlur(img, (5,5), 0)
+
+
+   # img = cv2.bitwise_not(img)
+    ret, img = cv2.threshold(img, 20,255, cv2.THRESH_BINARY)
+
+    img = cv2.bitwise_not(img)
+
+    return img
+
+#TODO - Right now the template is only one, need to be able to add support for far more templates - need to return an array of images obv
 def getTemplate():
     # Begin Getting of Template
     imgTemplate = cv2.imread('testTemplate0.png')
+
+    cv2.imshow("originalTemplate", imgTemplate)
+
+    #TODO - set the size based on automatic parameters
     imgTemplate = imutils.resize(imgTemplate, width=300)
 
-    imgGrayTemplate = cv2.cvtColor(imgTemplate, cv2.COLOR_BGR2GRAY)  # get grayscale image
-    imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5, 5), 0)  # blur
+    img = binarizeImage(imgTemplate)
 
-    # filter image from grayscale to black and white
-    imgInv = cv2.bitwise_not(imgBlurred)
+    cv2.imshow("template", img)
 
-    ret, imgThresh = cv2.threshold(imgInv, 245,255, cv2.THRESH_TOZERO)
-
-    cv2.imshow("template", imgThresh)
-
-    return imgThresh
+    return img
 
 def deskewImageBasedOnContour(contour, img):
+    """This function correcs the rotation of the IC"""
     # print("Largest Contour Area from npa contour", cv2.contourArea(contours))
     [x, y, w, h] = cv2.boundingRect(contour)
     # if h > w:
@@ -93,19 +117,18 @@ def deskewImageBasedOnContour(contour, img):
 
 template[0] = getTemplate()
 
-arrayOfResults = []
+#End getting of template
 
 while True:
-    #End getting of template
-
     ret, frame = cap.read()
 
     img = frame
     # img = cv2.imread('testTemplate2.png')
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
+    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
     img = imutils.resize(img, width=300)
+    cv2.imshow("Original", img)
     imgGrayTemplate = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)          # get grayscale image
 
     # something to play with here, where you use a closing operation followed by a dividing operation to get a uniform brightness
@@ -113,23 +136,27 @@ while True:
     # cv2.imshow("closed", close)
     # div = np.float32(imgGrayTemplate)/(close)
     # cv2.imshow("divided",div)
+    #TODO - implement automatic parameter handling for the threshold
 
+    #First the algorithm searches for an IC as whole, before zooming into it
     imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5,5), 0)
-    imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-
-    #open to remove noise
-    imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
-    #close to find the largest contour
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
-    imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_CLOSE, kernel)
-
-
+    # imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+    #
+    # #open to remove noise
+    # imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
+    # #close to find the largest contour
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
+    # imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_CLOSE, kernel)
+    ret, imgThresh = cv2.threshold(imgBlurred, 100,255, cv2.THRESH_BINARY)
+    imgThresh = cv2.bitwise_not(imgThresh)
     cv2.imshow("thresh",imgThresh)
 
     imgThreshCopy = imgThresh.copy()
+
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # cv2.drawContours(img, npaContours, -1, (255,0,0),1)
     cv2.imshow("contours",img)
+
     arrayOfContourAreas = []
 
     #This coding finds the largest Contour
@@ -139,16 +166,23 @@ while True:
 
     if arrayOfContourAreas != []:
         biggestIndex = np.argmax(arrayOfContourAreas)
-        #print("contour found")
+        print("contour found")
     else:
         #this is in case no contours are found, so that the array isn't empty
         arrayOfContourAreas.append(0)
         biggestIndex = 0
         print("No contours were found")
-    #TODO - this code is not efficient! Need to find a better way to get the largest contour area!
+
 
     #makes sure that a contour exists, if not it'll crash
+    #Once youve found the ROI you need to do new thresholding similar to how you found the template
 
+    #This is the filtering process if it's an IC or not
+    #TODO - Deal with multiple use cases
+    #TODO 1 - Deal with multiple IC's on a single picture
+    #TODO 2 - Deal with an IC being on the edge, before fully coming into frame
+    #TODO 3 - Deal with varying areas of an IC and sort them before they even get into template matching
+    #TODO 4 - this code is not efficient! Need to find a better way to get the largest contour area!
     if len(npaContours) != 0:
         #need to make sure the area is found if not it crashes
         found = False
@@ -166,26 +200,27 @@ while True:
                 continue
                 #if not break the outer loop
             break
-
-
+        img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
+        cv2.imshow("Largest area contour", img)
 
         if found:
             #deskew the image
             roi = deskewImageBasedOnContour(contours, img)
 
-            cv2.imshow("roi2", roi)
+            cv2.imshow("deskewed Image", roi)
 
-            imgGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
-
-            #imgDenoised = cv2.fastNlMeansDenoising(roi, None,10,10,7,21)
-            imgblur = cv2.GaussianBlur(imgGray, (1,1), 0)
-            imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-
-            #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
+            # imgGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
+            #
+            # #imgDenoised = cv2.fastNlMeansDenoising(roi, None,10,10,7,21)
+            # imgblur = cv2.GaussianBlur(imgGray, (1,1), 0)
+            # imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+            #
+            # #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
+            imgThresh = binarizeImage(roi)
 
             roi = cv2.resize(imgThresh, (250,100))
-            cv2.imshow('roi', roi)
+            cv2.imshow('Image to match', roi)
 
             scores = []
             groupOutput = []
@@ -202,14 +237,14 @@ while True:
 
             #return the most frequent of 10 results
             if len(arrayOfResults) == 10:
+                (x, y, w, h) = cv2.boundingRect(contours)
                 counts = np.bincount(arrayOfResults)
                 string = str(np.argmax(counts))
                 #only show if it's above the acceptable threshold
                 if max(scores) > acceptedThreshold:
-                    cv2.putText(img, "Type " + "".join(string), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(contours)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 else:
-                    (x,y,w,h) = cv2.boundingRect(contours)
-                    cv2.putText(img, "No IC found!", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(contours)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 cv2.imshow('final', img)
                 arrayOfResults = []
             # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
