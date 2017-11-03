@@ -11,49 +11,87 @@ MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 #TODO - Sort according to size first
-
+template = {}
 def getTemplate():
     # Begin Getting of Template
-    imgTemplate = cv2.imread('testTemplate9.png')
+    imgTemplate = cv2.imread('testTemplate0.png')
     imgTemplate = imutils.resize(imgTemplate, width=300)
 
     imgGrayTemplate = cv2.cvtColor(imgTemplate, cv2.COLOR_BGR2GRAY)  # get grayscale image
     imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5, 5), 0)  # blur
 
     # filter image from grayscale to black and white
-    imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-    cv2.imshow('thres', imgTemplate)
+    imgInv = cv2.bitwise_not(imgBlurred)
 
-    imgThreshCopy = imgThresh.copy()
-    imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    digits = {}
-    template = {}
+    ret, imgThresh = cv2.threshold(imgInv, 245,255, cv2.THRESH_TOZERO)
 
+    cv2.imshow("template", imgThresh)
 
-    for (i, c) in enumerate(npaContours):
-        # if contour is big enough to consider
-        [x, y, w, h] = cv2.boundingRect(c)
-        if cv2.contourArea(c) > MIN_CONTOUR_AREA:
-            roi = imgTemplate[y:y + h, x:x + w]
-            ###########
-            refgray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            refblur = cv2.GaussianBlur(refgray, (1, 1), 0)
-            refthresh = cv2.adaptiveThreshold(refblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11,
-                                              2)
-            ###########
-            roi = cv2.resize(refthresh, (250, 100))
-            digits[i] = roi
+    return imgThresh
 
-    # saving templates in sorted dictionary
-    for (i, c) in enumerate(digits):
-        template[i] = digits[c]
-        cv2.imshow('template' + str(i), template[i])
+def deskewImageBasedOnContour(contour, img):
+    # print("Largest Contour Area from npa contour", cv2.contourArea(contours))
+    [x, y, w, h] = cv2.boundingRect(contour)
+    # if h > w:
+    # 	angle = angle + 90
 
-    return template
+    # cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
+    # cv2.drawContours(img,contours,-1, (0,255,0),1)
+    # cv2.drawContours(img,npaContours,-1,(255,0,0),1)
+    # need to deskew the contours
+    # print(contours)
 
-template = getTemplate()
+    rect = cv2.minAreaRect(contour)
+
+    center = rect[0]
+    angle = rect[2]
+
+    # get the roi of the rotated bounding box - this is also the exact dimensions of the straightened box
+    cX, cY = center
+    w, h = rect[1]
+
+    w = int(w)
+    h = int(h)
+
+    if w < h:
+        angle = angle + 90
+        w, h = h, w
+
+    x = int(cX) - int(w / 2)
+    y = int(cY) - int(h / 2)
+
+    # we only have the center so we need to get the x and the y
+
+    # cv2.rectangle(thresh, (x, y), (x + w, y + h), (255, 255, 0), 1)
+    rows, cols, _ = img.shape
+    # print(x,y,w,h)
+
+    if x < 0:
+        x = 0
+    if x > rows:
+        x = rows
+    if y > cols:
+        y = cols
+    if y < 0:
+        y = 0
+
+    # cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+    # new center x is no longer the center here btw, it's now the x value of the rectangle
+    rot = cv2.getRotationMatrix2D(center, angle, 1)
+    # cv2.imshow("before rotation", img)
+
+    img = cv2.warpAffine(img, rot, (cols, rows))
+    # cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 1)
+    # roiFinal = img[y:y + h, x:x + w]
+
+    # set the ROI based on the rotated image
+    img = img[y:y + h, x:x + w]
+    cv2.imshow("deskewed", img)
+    return img
+
+template[0] = getTemplate()
 
 arrayOfResults = []
 
@@ -63,7 +101,7 @@ while True:
     ret, frame = cap.read()
 
     img = frame
-    img = cv2.imread('testTemplate2.png')
+    # img = cv2.imread('testTemplate2.png')
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
@@ -90,7 +128,7 @@ while True:
 
     imgThreshCopy = imgThresh.copy()
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #cv2.drawContours(img, npaContours, -1, (255,0,0),1)
+    # cv2.drawContours(img, npaContours, -1, (255,0,0),1)
     cv2.imshow("contours",img)
     arrayOfContourAreas = []
 
@@ -106,7 +144,7 @@ while True:
         #this is in case no contours are found, so that the array isn't empty
         arrayOfContourAreas.append(0)
         biggestIndex = 0
-        #print("No contours were found")
+        print("No contours were found")
     #TODO - this code is not efficient! Need to find a better way to get the largest contour area!
 
     #makes sure that a contour exists, if not it'll crash
@@ -131,64 +169,10 @@ while True:
 
 
 
-        if found == True:
-            #print("Largest Contour Area from npa contour", cv2.contourArea(contours))
-            [x,y,w,h] = cv2.boundingRect(contours)
-            # if h > w:
-            # 	angle = angle + 90
+        if found:
+            #deskew the image
+            roi = deskewImageBasedOnContour(contours, img)
 
-            #cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
-            #cv2.drawContours(img,contours,-1, (0,255,0),1)
-            #cv2.drawContours(img,npaContours,-1,(255,0,0),1)
-            #need to deskew the contours
-            #print(contours)
-
-            rect = cv2.minAreaRect(contours)
-
-            center = rect[0]
-            angle = rect[2]
-
-            # get the roi of the rotated bounding box - this is also the exact dimensions of the straightened box
-            cX, cY = center
-            w, h = rect[1]
-
-            w = int(w)
-            h = int(h)
-
-            if w < h:
-                angle = angle + 90
-                w, h = h, w
-
-            x = int(cX) - int(w / 2)
-            y = int(cY) - int(h / 2)
-
-            # we only have the center so we need to get the x and the y
-
-            #cv2.rectangle(thresh, (x, y), (x + w, y + h), (255, 255, 0), 1)
-            rows, cols = imgThresh.shape
-            #print(x,y,w,h)
-
-            if x < 0:
-                x = 0
-            if x > rows:
-                x = rows
-            if y > cols:
-                y = cols
-            if y < 0:
-                y = 0
-
-            #cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            # new center x is no longer the center here btw, it's now the x value of the rectangle
-            rot = cv2.getRotationMatrix2D(center, angle, 1)
-            cv2.imshow("before rotation",img)
-
-            #TODO - set it so that only the ROI rotates not everything!
-            img = cv2.warpAffine(img, rot, (cols, rows))
-            #cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 1)
-            # roiFinal = img[y:y + h, x:x + w]
-
-            #set the ROI based on the rotated image
-            roi = img[y:y+h, x:x+w]
             cv2.imshow("roi2", roi)
 
             imgGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -199,7 +183,7 @@ while True:
             imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
             #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
-#testing
+
             roi = cv2.resize(imgThresh, (250,100))
             cv2.imshow('roi', roi)
 
@@ -224,6 +208,7 @@ while True:
                 if max(scores) > acceptedThreshold:
                     cv2.putText(img, "Type " + "".join(string), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 else:
+                    (x,y,w,h) = cv2.boundingRect(contours)
                     cv2.putText(img, "No IC found!", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 cv2.imshow('final', img)
                 arrayOfResults = []
