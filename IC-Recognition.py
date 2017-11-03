@@ -12,7 +12,6 @@ acceptedThreshold = 0.1
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
 cap = cv2.VideoCapture(1)
-cap.set(15, 10)
 
 #TODO - Sort according to size first then sort according to type
 template = {}
@@ -26,15 +25,14 @@ def binarizeImage(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     cv2.imshow("before histomgram equalized", img)
     img = cv2.equalizeHist(img)
-    print("mean ", cv2.mean(img))
     cv2.imshow("histogram equalized", img)
     img = cv2.GaussianBlur(img, (5,5), 0)
 
 
-   # img = cv2.bitwise_not(img)
     ret, img = cv2.threshold(img, 20,255, cv2.THRESH_BINARY)
 
-    img = cv2.bitwise_not(img)
+
+    # img = cv2.bitwise_not(img)
 
     return img
 
@@ -166,12 +164,12 @@ while True:
 
     if arrayOfContourAreas != []:
         biggestIndex = np.argmax(arrayOfContourAreas)
-        print("contour found")
+        # print("contour found")
     else:
         #this is in case no contours are found, so that the array isn't empty
         arrayOfContourAreas.append(0)
         biggestIndex = 0
-        print("No contours were found")
+        # print("No contours were found")
 
 
     #makes sure that a contour exists, if not it'll crash
@@ -188,10 +186,10 @@ while True:
         found = False
         for npaContour in npaContours:
             if cv2.contourArea(npaContour) == arrayOfContourAreas[biggestIndex] and cv2.contourArea(npaContour) != 0:
-                print(cv2.contourArea(npaContour), arrayOfContourAreas[biggestIndex])
+                # print(cv2.contourArea(npaContour), arrayOfContourAreas[biggestIndex])
                 contours = npaContour
                 found = True
-                print("found!")
+                # print("found!")
                 #break the inner loop
                 break
                 #the point of this else and break is so that I can break out of 2 loops, the inner if loop and the outer for loop, if not break will only break the if loop and not the foor loop
