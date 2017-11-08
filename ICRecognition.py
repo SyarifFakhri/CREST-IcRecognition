@@ -2,6 +2,7 @@ import cv2
 from imutils import contours
 import numpy as np
 import imutils
+from matplotlib import pyplot as plt
 #import os
 #import sys
 #from PIL import Image
@@ -9,31 +10,52 @@ import imutils
 
 MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
+sigma = -50
 #kernel = np.ones((1,1), np.uint8)
 "COLOUR TEMPLATE"
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 #TODO - Sort according to size first then sort according to type
+#TODO - stop the conveyor belt when the ic is in view
+#TODO - push the IC into the sorting boxes
+#TODO -
 template = {}
 arrayOfResults = []
 
 def binarizeImage(img):
     #This will extract features for template and second phase matching
-    """This function converts the image to gray, puts a gaussian blur, inverts the image (for thresh to zero) then does a thresh to zero"""
+    """This function converts the image to gray, puts a gaussian blur then does a thresh"""
     #Not sure why it's a thresh to zero, maybe a binarize would be better - but for now this is just refactoring so just roll with it
     #This should also be based on automatic parameter matching
+
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    cv2.imshow("before histomgram equalized", img)
-    img = cv2.equalizeHist(img)
-    cv2.imshow("histogram equalized", img)
+    #Automatic thresholding - whatever the mean brightness is, just add a number
+    # plt.hist(img.ravel(),256, [0,256]); plt.show()
+    #
+    # cv2.imshow("before histomgram equalized", img)
+    # img = cv2.equalizeHist(img)
+
+    mean = int(cv2.mean(img)[0])
+
+    # cv2.imshow("histogram equalized", img)
     img = cv2.GaussianBlur(img, (5,5), 0)
 
+    #note: if the image comes out too white, that means the threshold is too low, and if it comes out too black
+    #it means the threshold is too high
+    """
+    thresholdValue = mean + sigma
 
-    ret, img = cv2.threshold(img, 20,255, cv2.THRESH_BINARY)
+    print("threshold value", thresholdValue)
 
+    if thresholdValue < 10:
+        #minimum is 10
+        thresholdValue = 10"""
+
+    # ret, img = cv2.threshold(img, thresholdValue,255, cv2.THRESH_BINARY)
+    img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 1)
 
     # img = cv2.bitwise_not(img)
-
+    #
     return img
 
 #TODO - Right now the template is only one, need to be able to add support for far more templates - need to return an array of images obv
@@ -41,7 +63,7 @@ def getTemplate():
     # Begin Getting of Template
     imgTemplate = cv2.imread('testTemplate0.png')
 
-    cv2.imshow("originalTemplate", imgTemplate)
+    # cv2.imshow("originalTemplate", imgTemplate)
 
     #TODO - set the size based on automatic parameters
     imgTemplate = imutils.resize(imgTemplate, width=300)
@@ -110,7 +132,7 @@ def deskewImageBasedOnContour(contour, img):
 
     # set the ROI based on the rotated image
     img = img[y:y + h, x:x + w]
-    cv2.imshow("deskewed", img)
+    # cv2.imshow("deskewed", img)
     return img
 
 template[0] = getTemplate()
@@ -118,14 +140,13 @@ template[0] = getTemplate()
 #End getting of template
 
 while True:
-    ret, frame = cap.read()
+    ret, img = cap.read()
 
-    img = frame
     # img = cv2.imread('testTemplate2.png')
     #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
-    img = imutils.resize(img, width=300)
+    img = imutils.resize(img, width=300, height=600)
     cv2.imshow("Original", img)
     imgGrayTemplate = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)          # get grayscale image
 
@@ -145,7 +166,7 @@ while True:
     # #close to find the largest contour
     # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
     # imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_CLOSE, kernel)
-    ret, imgThresh = cv2.threshold(imgBlurred, 100,255, cv2.THRESH_BINARY)
+    ret, imgThresh = cv2.threshold(imgBlurred, 150,255, cv2.THRESH_BINARY)
     imgThresh = cv2.bitwise_not(imgThresh)
     cv2.imshow("thresh",imgThresh)
 
@@ -153,13 +174,14 @@ while True:
 
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # cv2.drawContours(img, npaContours, -1, (255,0,0),1)
-    cv2.imshow("contours",img)
+    # cv2.imshow("contours",img)
 
     arrayOfContourAreas = []
 
     #This coding finds the largest Contour
     for npaContour in npaContours:
-        if cv2.contourArea(npaContour) > 100:
+        (x, y, w, h) = cv2.boundingRect(npaContour)
+        if cv2.contourArea(npaContour) > 100 and x > 0:
             arrayOfContourAreas.append(cv2.contourArea(npaContour))
 
     if arrayOfContourAreas != []:
@@ -180,6 +202,7 @@ while True:
     #TODO 1 - Deal with multiple IC's on a single picture
     #TODO 2 - Deal with an IC being on the edge, before fully coming into frame
     #TODO 3 - Deal with varying areas of an IC and sort them before they even get into template matching
+
     #TODO 4 - this code is not efficient! Need to find a better way to get the largest contour area!
     if len(npaContours) != 0:
         #need to make sure the area is found if not it crashes
@@ -198,14 +221,14 @@ while True:
                 continue
                 #if not break the outer loop
             break
-        img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
-        cv2.imshow("Largest area contour", img)
+        # img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
+        # cv2.imshow("Largest area contour", img)
 
         if found:
             #deskew the image
             roi = deskewImageBasedOnContour(contours, img)
 
-            cv2.imshow("deskewed Image", roi)
+            # cv2.imshow("deskewed Image", roi)
 
             # imgGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
             # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
