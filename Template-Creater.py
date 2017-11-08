@@ -7,31 +7,34 @@ cap = cv2.VideoCapture(1)
 
 sigma = -50
 MIN_CONTOUR_AREA = 500
-thresholdValue = 2
+thresholdValue = 100
 
-def findTheMeanBetweenTheTwoMaxPeaksInHistogram(img):
+def convertToHistogramFindMaxPeakAndReturnThresh(img):
     """calculates the histogram, smooths histogram, then plots the histogram of the image. Also plots the peaks"""
-    """Purple is the threshold value, white is all the peaks,red is the two peaks, green is the mean value"""
+    """Purple is the threshold value, white is all the peaks,red is the two max peaks, green is the mean value"""
+    img = cv2.GaussianBlur(img, (21,21), 0)
     histogram = cv2.calcHist([img], [0], None, [256], [0, 256])
-    histogram = cv2.GaussianBlur(histogram, (13, 13), 0)
+    histogram = cv2.GaussianBlur(histogram, (21, 21), 0)
     peaks = [0]*256
 
     histW, histH = 256, 500
     hist = np.zeros((histH, histW, 3), np.uint8)
-    step = 2
+    step = 1
 
     """find peaks"""
     for index in range(0, 256, step):
         try:
             if histogram[index] > histogram[index - step] and histogram[index] > histogram[index + step]:
-                peaks.insert(index, histogram[index][0])
-                cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
+                #ignore values that are too white, they're just background
+                if index < 200:
+                    peaks.insert(index, histogram[index][0])
+                    cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
         except:
             pass
 
     # print(peaks)
+    """find two maximum value peaks
     finalTwoPeaks = []
-    """find two maximum value peaks"""
     for x in range(0,2):
         try:
             peak = np.argmax(peaks)
@@ -42,7 +45,9 @@ def findTheMeanBetweenTheTwoMaxPeaksInHistogram(img):
 
     print(finalTwoPeaks)
     mean = int((finalTwoPeaks[0] + finalTwoPeaks[1])/2)
-
+    """
+    maxHist = np.argmax(peaks)
+    thresh = 35
     #draw the entire histogram
     for index, value in enumerate(histogram):
         #normalize the values
@@ -52,13 +57,13 @@ def findTheMeanBetweenTheTwoMaxPeaksInHistogram(img):
         cv2.line(hist, (index, histH), (index, histH - value), (255, 255, 0), 1)
 
     #draw the two maxes
-    for index in finalTwoPeaks:
-        cv2.line(hist, (index, 0), (index, histH), (0, 0, 255), 1)
-    cv2.line(hist, (mean, 0), (mean, histH), (0, 255, 0), 1)
+
+    cv2.line(hist, (maxHist, 0), (maxHist, histH), (0, 0, 255), 1)
+    cv2.line(hist, (maxHist + thresh, 0), (maxHist + thresh, histH), (0, 255, 0), 1)
     cv2.line(hist, (thresholdValue, 0), (thresholdValue, histH), (255, 0, 255), 1)
     cv2.imshow("histogram", hist)
 
-    return mean
+    return maxHist + thresh
 
 
 def binarizeImage(img):
@@ -76,8 +81,7 @@ def binarizeImage(img):
 
     # mean = int(cv2.mean(img)[0])
 
-    mean = findTheMeanBetweenTheTwoMaxPeaksInHistogram(img)
-
+    mean = convertToHistogramFindMaxPeakAndReturnThresh(img)
     # cv2.imshow("histogram equalized", img)
     img = cv2.GaussianBlur(img, (5,5), 0)
 
@@ -90,10 +94,12 @@ def binarizeImage(img):
     # if thresholdValue < 10:
     #     #minimum is 10
     #     thresholdValue = 10
-    thresholdValue = mean
-    ret, img = cv2.threshold(img, thresholdValue,255, cv2.THRESH_BINARY)
 
 
+    ret, imgStaticThresh = cv2.threshold(img, thresholdValue, 255, cv2.THRESH_BINARY)
+
+    ret, img = cv2.threshold(img, mean, 255, cv2.THRESH_BINARY)
+    cv2.imshow("staticThresh", imgStaticThresh)
     # img = cv2.bitwise_not(img)
     #
     return img
