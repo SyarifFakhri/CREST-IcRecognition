@@ -114,8 +114,9 @@ while True:
     cv2.imshow("image", img)
     binarized = binarizeImage(img)
     cv2.imshow("binarized", binarized)
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        cv2.imwrite("template.png", binarized)
+        cv2.imwrite("template.png", img)
         break
 
 #then do the output stuff
