@@ -10,19 +10,23 @@ from matplotlib import pyplot as plt
 
 MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
-threshToAdd = 30
+#when you change it here change it in the template as well!
+threshToAddForDetail = 5
+threshToAddForGeneral = 10
+
 sampleX = 100
 sampleY = 100
 
 #have one bigModel for large ICs and one small model for small ICs
 bigModel = cv2.ml.KNearest_create()
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 #TODO - Sort according to size first then sort according to type
 #TODO - stop the conveyor belt when the ic is in view
 #TODO - push the IC into the sorting boxes
-#TODO -
+#TODO - Deal with upside down cases!
+
 template = {}
 arrayOfResults = []
 
@@ -36,7 +40,7 @@ def drawHistogram(histogram, histW, histH):
 
     return hist
 
-def convertToHistogramFindMaxPeakAndReturnThresh(img):
+def convertToHistogramFindMaxPeakAndReturnThresh(img, threshToAdd):
     """calculates the histogram, smooths histogram, then plots the histogram of the image. Also plots the peaks"""
     """Purple is the threshold value, white is all the peaks,red is the two max peaks, green is the mean value"""
     img = cv2.GaussianBlur(img, (21,21), 0)
@@ -73,7 +77,7 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img):
 
     return maxHist + threshToAdd
 
-def binarizeImage(img):
+def binarizeImage(img, withThreshToAdd):
     #This will extract features for template and second phase matching
     """This function converts the image to gray, puts a gaussian blur then does a thresh"""
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -81,38 +85,45 @@ def binarizeImage(img):
     img = cv2.GaussianBlur(img, (5,5), 0)
 
     #use an automatic threshold, based on histogram peak value
-    threshVal = convertToHistogramFindMaxPeakAndReturnThresh(img)
+    threshVal = convertToHistogramFindMaxPeakAndReturnThresh(img, withThreshToAdd)
     # ret, img = cv2.threshold(img, thresholdValue,255, cv2.THRESH_BINARY)
     ret, img = cv2.threshold(img, threshVal,255, cv2.THRESH_BINARY)
 
     return img
 
 def getTemplate():
+
+    numberOfSamples = 0
     # Begin Getting of Template
     #it will just cycle through images, possibly until it can't anymore
     samples = np.empty((0,sampleX*sampleY))
-    # try:
-    for x in range(0, 3):
-        imgTemplate = cv2.imread('testTemplate' + str(x) + '.png')
-        imgTemplate = imutils.resize(imgTemplate, width=600)
-        img = binarizeImage(imgTemplate)
+    print(numberOfSamples)
+    try:
+        while True:
+            imgTemplate = cv2.imread('templateCreator' + str(numberOfSamples) + '.png')
+            imgTemplate = imutils.resize(imgTemplate, width=300)
 
-        #find the general area of the picture
-        img = cv2.bitwise_not(img)
-        imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
-                                                                  cv2.CHAIN_APPROX_SIMPLE)
-        contour = returnLargestAreaOfContours(npaContours)
+            #find the general area of the picture
+            img = binarizeImage(imgTemplate, threshToAddForGeneral)
+            img = cv2.bitwise_not(img)
+            imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
+                                                                      cv2.CHAIN_APPROX_SIMPLE)
+            contour = returnLargestAreaOfContours(npaContours)
 
-        img = deskewImageBasedOnContour(contour, imgTemplate)
-        img = imutils.resize(img, width=300)
-        img = binarizeImage(img)
+            img = deskewImageBasedOnContour(contour, imgTemplate)
 
-        sample = extractFeatureFromImageForKNN(img)
-        samples = np.append(samples, sample, 0).astype(np.float32)
+            #Then get the details
+            img = imutils.resize(img, width=300)
+            img = binarizeImage(img, threshToAddForDetail)
 
-        cv2.imshow("template" + str(x), img)
-    # except:
-    #     print("There was a problem getting a file template!")
+            sample = extractFeatureFromImageForKNN(img)
+            samples = np.append(samples, sample, 0).astype(np.float32)
+
+            # cv2.imshow("template" + str(numberOfSamples), img)
+            numberOfSamples = numberOfSamples + 1
+
+    except:
+        print("There are no more file templates! Last count was: ", numberOfSamples)
 
         # cv2.imshow("originalTemplate", imgTemplate)
 
@@ -210,6 +221,7 @@ def returnLargestAreaOfContours(npaContours):
     #TODO 3 - Deal with varying areas of an IC and sort them before they even get into template matching
 
     #TODO 4 - this code is not efficient! Need to find a better way to get the largest contour area!
+    largestContour = None
     try:
         #need to make sure the area is found that's why we use except
         for npaContour in npaContours:
@@ -238,10 +250,9 @@ def extractFeatureFromImageForKNN(img):
     sample = roismall.reshape((1, sampleX*sampleY))
     return sample
 
-
 templateSamples = getTemplate()
 
-responses = [0,1,2] #this is actually KNN responses array, it should actually correspond to the type inside the template samples
+responses = [[0]*10,[1]*10, [2]*10] #this is actually KNN responses array, it should actually correspond to the type inside the template samples
 #convert to numpy to make it faster
 responses = np.array(responses, np.float32)
 responses = responses.reshape((responses.size,1))
@@ -256,42 +267,25 @@ while True:
     #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
-    img = imutils.resize(img, width=300, height=600)
+    img = imutils.resize(img, width=300)
     cv2.imshow("Original", img)
-    imgGrayTemplate = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)          # get grayscale image
-
-    # something to play with here, where you use a closing operation followed by a dividing operation to get a uniform brightness
-    # close = cv2.morphologyEx(imgGrayTemplate, cv2.MORPH_CLOSE, kernel)
-    # cv2.imshow("closed", close)
-    # div = np.float32(imgGrayTemplate)/(close)
-    # cv2.imshow("divided",div)
-    #TODO - implement automatic parameter handling for the threshold
-
-    #First the algorithm searches for an IC as whole, before zooming into it
-    imgBlurred = cv2.GaussianBlur(imgGrayTemplate, (5,5), 0)
-    # imgThresh = cv2.adaptiveThreshold(imgBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-    #
-    # #open to remove noise
-    # imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
-    # #close to find the largest contour
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
-    # imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_CLOSE, kernel)
-    ret, imgThresh = cv2.threshold(imgBlurred, 150,255, cv2.THRESH_BINARY)
+    imgThresh = binarizeImage(img, threshToAddForGeneral)         # get grayscale image
     imgThresh = cv2.bitwise_not(imgThresh)
-    cv2.imshow("thresh",imgThresh)
 
-    imgThreshCopy = imgThresh.copy()
+    cv2.imshow("General thresh",imgThresh)
+
+    imgThreshCopy = imgThresh.copy() #not sure why we make a copy here
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     largestContourInImage = returnLargestAreaOfContours(npaContours)
-    #cv2.drawContours(img, largestContourInImage, -1, (255,0,0), 1)
+    cv2.drawContours(img, largestContourInImage, -1, (255,0,0), 2)
 
     if largestContourInImage is not None:
         #deskew the image
         roi = deskewImageBasedOnContour(largestContourInImage, img)
-
-        imgThresh = binarizeImage(roi)
-
+        # cv2.imshow("deskewed", roi)
+        imgThresh = binarizeImage(roi, threshToAddForDetail)
+        # cv2.imshow("imgThresh", imgThresh)
         #make sure that the roi is the same size as the templates
         #if the templates are bigger then the program will crash
         roi = cv2.resize(imgThresh, (300,200))
@@ -303,7 +297,7 @@ while True:
         roi = extractFeatureFromImageForKNN(roi)
         roi = np.float32(roi)
 
-        retval, results, neighResp, dists = bigModel.findNearest(roi, k=1)
+        retval, results, neighResp, dists = bigModel.findNearest(roi, k=5)
         string = str(int((results[0][0])))
 
         (x, y, w, h) = cv2.boundingRect(largestContourInImage)
@@ -343,7 +337,6 @@ while True:
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-
 
 cap.release()
 #out.release()
