@@ -10,9 +10,8 @@ from matplotlib import pyplot as plt
 
 MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
-sigma = -50
-#kernel = np.ones((1,1), np.uint8)
-"COLOUR TEMPLATE"
+threshToAdd = 30
+
 cap = cv2.VideoCapture(0)
 
 #TODO - Sort according to size first then sort according to type
@@ -57,7 +56,6 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img):
             print ("histogram at index: ", index, "gave an error")
     # print(peaks)
     maxHist = np.argmax(peaks)
-    threshToAdd = 35
 
     #draw the entire histogram
 
@@ -87,15 +85,23 @@ def getTemplate():
     # Begin Getting of Template
     #it will just cycle through images, possibly until it can't anymore
     templates = {}
-    try:
-        for x in range(0, 3):
-            imgTemplate = cv2.imread('testTemplate' + str(x) + '.png')
-            imgTemplate = imutils.resize(imgTemplate, width=300)
-            img = binarizeImage(imgTemplate)
-            templates[x] = img
-            cv2.imshow("template" + str(x), img)
-    except:
-        print("There was a problem getting a file template!")
+    # try:
+    for x in range(0, 3):
+        imgTemplate = cv2.imread('testTemplate' + str(x) + '.png')
+        imgTemplate = imutils.resize(imgTemplate, width=300)
+        img = binarizeImage(imgTemplate)
+        img = cv2.bitwise_not(img)
+        imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
+                                                                  cv2.CHAIN_APPROX_SIMPLE)
+        contour = returnLargestAreaOfContours(npaContours)
+
+        img = deskewImageBasedOnContour(contour, imgTemplate)
+        img = binarizeImage(img)
+
+        templates[x] = img
+        cv2.imshow("template" + str(x), img)
+    # except:
+    #     print("There was a problem getting a file template!")
 
         # cv2.imshow("originalTemplate", imgTemplate)
 
@@ -104,7 +110,8 @@ def getTemplate():
     return templates
 
 def deskewImageBasedOnContour(contour, img):
-    """This function correcs the rotation of the IC"""
+    """This function corrects the rotation of the IC"""
+    """Make sure you give it a color image btw"""
     # print("Largest Contour Area from npa contour", cv2.contourArea(contours))
     [x, y, w, h] = cv2.boundingRect(contour)
     # if h > w:
@@ -138,7 +145,7 @@ def deskewImageBasedOnContour(contour, img):
     # we only have the center so we need to get the x and the y
 
     # cv2.rectangle(thresh, (x, y), (x + w, y + h), (255, 255, 0), 1)
-    rows, cols, _ = img.shape
+    rows, cols, __= img.shape
     # print(x,y,w,h)
 
     if x < 0:
@@ -260,7 +267,9 @@ while True:
 
         imgThresh = binarizeImage(roi)
 
-        roi = cv2.resize(imgThresh, (250,100))
+        #make sure that the roi is the same size as the templates
+        #if the templates are bigger then the program will crash
+        roi = cv2.resize(imgThresh, (300,200))
         cv2.imshow('Image to match', roi)
 
         scores = []
@@ -278,8 +287,9 @@ while True:
 
         #return the most frequent of 10 results
         #this code will only run once every 10 frames
-        if len(arrayOfResults) == 10:
+        if len(arrayOfResults) == 2:
             (x, y, w, h) = cv2.boundingRect(largestContourInImage)
+            #np.bincount returns the most frequent result in the array of results
             counts = np.bincount(arrayOfResults)
             string = str(np.argmax(counts))
             #only show if it's above the acceptable threshold
