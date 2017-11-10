@@ -116,6 +116,7 @@ while True:
     key = cv2.waitKey(1)
 
     if key == 32:
+        #space to save the image
         cv2.imwrite('templateCreator' + str(count) +'.png', img)
         count += 1
         print("Image saved")

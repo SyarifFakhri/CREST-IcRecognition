@@ -11,6 +11,11 @@ from matplotlib import pyplot as plt
 MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
 threshToAdd = 30
+sampleX = 100
+sampleY = 100
+
+#have one bigModel for large ICs and one small model for small ICs
+bigModel = cv2.ml.KNearest_create()
 
 cap = cv2.VideoCapture(0)
 
@@ -53,7 +58,8 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img):
                     peaks.insert(index, histogram[index][0])
                     cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
         except:
-            print ("histogram at index: ", index, "gave an error")
+            #print ("histogram at index: ", index, "gave an error")
+            pass
     # print(peaks)
     maxHist = np.argmax(peaks)
 
@@ -84,12 +90,14 @@ def binarizeImage(img):
 def getTemplate():
     # Begin Getting of Template
     #it will just cycle through images, possibly until it can't anymore
-    templates = {}
+    samples = np.empty((0,sampleX*sampleY))
     # try:
     for x in range(0, 3):
         imgTemplate = cv2.imread('testTemplate' + str(x) + '.png')
         imgTemplate = imutils.resize(imgTemplate, width=600)
         img = binarizeImage(imgTemplate)
+
+        #find the general area of the picture
         img = cv2.bitwise_not(img)
         imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
                                                                   cv2.CHAIN_APPROX_SIMPLE)
@@ -99,7 +107,9 @@ def getTemplate():
         img = imutils.resize(img, width=300)
         img = binarizeImage(img)
 
-        templates[x] = img
+        sample = extractFeatureFromImageForKNN(img)
+        samples = np.append(samples, sample, 0).astype(np.float32)
+
         cv2.imshow("template" + str(x), img)
     # except:
     #     print("There was a problem getting a file template!")
@@ -108,7 +118,7 @@ def getTemplate():
 
     #TODO - set the size based on automatic parameters
 
-    return templates
+    return samples
 
 def deskewImageBasedOnContour(contour, img):
     """This function corrects the rotation of the IC"""
@@ -222,9 +232,22 @@ def returnLargestAreaOfContours(npaContours):
         # img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
         # cv2.imshow("Largest area contour", img)
 
-template = getTemplate()
+def extractFeatureFromImageForKNN(img):
+    """takes an image, resizes it into it's features and then returns an array"""
+    roismall = cv2.resize(img, (sampleX, sampleY))
+    sample = roismall.reshape((1, sampleX*sampleY))
+    return sample
 
+
+templateSamples = getTemplate()
+
+responses = [0,1,2] #this is actually KNN responses array, it should actually correspond to the type inside the template samples
+#convert to numpy to make it faster
+responses = np.array(responses, np.float32)
+responses = responses.reshape((responses.size,1))
 #End getting of template
+
+bigModel.train(templateSamples, cv2.ml.ROW_SAMPLE, responses)
 
 while True:
     ret, img = cap.read()
@@ -261,6 +284,7 @@ while True:
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     largestContourInImage = returnLargestAreaOfContours(npaContours)
+    #cv2.drawContours(img, largestContourInImage, -1, (255,0,0), 1)
 
     if largestContourInImage is not None:
         #deskew the image
@@ -276,7 +300,19 @@ while True:
         scores = []
         groupOutput = []
 
-        for(templateCount, templateROI) in template.items():
+        roi = extractFeatureFromImageForKNN(roi)
+        roi = np.float32(roi)
+
+        retval, results, neighResp, dists = bigModel.findNearest(roi, k=1)
+        string = str(int((results[0][0])))
+
+        (x, y, w, h) = cv2.boundingRect(largestContourInImage)
+
+        cv2.putText(img, "Type " + "".join(string) + ": Area of contour: " + str(cv2.contourArea(largestContourInImage)),
+                    (x, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        cv2.imshow("final", img)
+
+        """for(templateCount, templateROI) in template.items():
             result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
             #print(result)
             (_,score,_,_) = cv2.minMaxLoc(result)
@@ -300,7 +336,7 @@ while True:
                 cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
             cv2.imshow('final', img)
-            arrayOfResults = []
+            arrayOfResults = []"""
         # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         # cv2.imshow('final', img)
         #print('type detected : ' + "".join(groupOutput))
