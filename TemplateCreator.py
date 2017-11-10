@@ -4,6 +4,8 @@ import numpy as np
 import imutils
 
 cap = cv2.VideoCapture(1)
+cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
+cap.set(cv2.CAP_PROP_EXPOSURE, 15)  # Doesn't work lel
 
 MIN_CONTOUR_AREA = 500
 thresholdValue = 60
@@ -136,7 +138,7 @@ def deskewImageBasedOnContour(contour, img):
     h = int(h)
 
     if w < h:
-        angle = angle + 90
+        angle = angle - 90
         w, h = h, w
 
     x = int(cX) - int(w / 2)
@@ -245,6 +247,7 @@ while True:
         cv2.imshow("image", imgTemplate)
 
         cv2.imshow("binarized", img)
+
     except:
         print("error occurred")
     key = cv2.waitKey(1)

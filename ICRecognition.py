@@ -21,7 +21,8 @@ sampleY = 100
 bigModel = cv2.ml.KNearest_create()
 
 cap = cv2.VideoCapture(1)
-
+cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
+cap.set(cv2.CAP_PROP_EXPOSURE, 15)  # Doesn't work lel
 #TODO - Sort according to size first then sort according to type
 #TODO - stop the conveyor belt when the ic is in view
 #TODO - push the IC into the sorting boxes
@@ -118,8 +119,8 @@ def getTemplate():
 
             sample = extractFeatureFromImageForKNN(img)
             samples = np.append(samples, sample, 0).astype(np.float32)
-
-            # cv2.imshow("template" + str(numberOfSamples), img)
+            if numberOfSamples % 10 == 0:
+                cv2.imshow("template" + str(numberOfSamples), img)
             numberOfSamples = numberOfSamples + 1
 
     except:
@@ -158,7 +159,7 @@ def deskewImageBasedOnContour(contour, img):
     h = int(h)
 
     if w < h:
-        angle = angle + 90
+        angle = angle - 90
         w, h = h, w
 
     x = int(cX) - int(w / 2)
@@ -261,6 +262,8 @@ responses = responses.reshape((responses.size,1))
 bigModel.train(templateSamples, cv2.ml.ROW_SAMPLE, responses)
 
 while True:
+
+    # cap.set(cv2.CAP_PROP_EXPOSURE, 1)
     ret, img = cap.read()
 
     # img = cv2.imread('testTemplate2.png')
