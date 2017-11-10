@@ -96,6 +96,7 @@ def getTemplate():
         contour = returnLargestAreaOfContours(npaContours)
 
         img = deskewImageBasedOnContour(contour, imgTemplate)
+        img = imutils.resize(img, width=300)
         img = binarizeImage(img)
 
         templates[x] = img
