@@ -7,7 +7,7 @@ cap = cv2.VideoCapture(1)
 
 sigma = -50
 MIN_CONTOUR_AREA = 500
-thresholdValue = 100
+thresholdValue = 60
 
 def convertToHistogramFindMaxPeakAndReturnThresh(img):
     """calculates the histogram, smooths histogram, then plots the histogram of the image. Also plots the peaks"""
@@ -15,6 +15,7 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img):
     img = cv2.GaussianBlur(img, (21,21), 0)
     histogram = cv2.calcHist([img], [0], None, [256], [0, 256])
     histogram = cv2.GaussianBlur(histogram, (21, 21), 0)
+    #this implementation to find peaks is dam hacky, pls implement more elegant solution
     peaks = [0]*256
 
     histW, histH = 256, 500
@@ -30,7 +31,7 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img):
                     peaks.insert(index, histogram[index][0])
                     cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
         except:
-            pass
+            print ("histogram at index: ", index, "gave an error")
 
     # print(peaks)
     """find two maximum value peaks

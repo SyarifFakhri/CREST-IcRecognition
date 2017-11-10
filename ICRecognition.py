@@ -22,57 +22,86 @@ cap = cv2.VideoCapture(0)
 template = {}
 arrayOfResults = []
 
+def drawHistogram(histogram, histW, histH):
+
+    hist = np.zeros((histH, histW, 3), np.uint8)
+    for index, value in enumerate(histogram):
+        #normalize the values
+        value = int((value/(max(histogram)))*500)
+        cv2.line(hist, (index, histH), (index, histH - value), (255, 255, 0), 1)
+
+    return hist
+
+def convertToHistogramFindMaxPeakAndReturnThresh(img):
+    """calculates the histogram, smooths histogram, then plots the histogram of the image. Also plots the peaks"""
+    """Purple is the threshold value, white is all the peaks,red is the two max peaks, green is the mean value"""
+    img = cv2.GaussianBlur(img, (21,21), 0)
+    histogram = cv2.calcHist([img], [0], None, [256], [0, 256])
+    histogram = cv2.GaussianBlur(histogram, (21, 21), 0)
+    #this implementation to find peaks is dam hacky, pls implement more elegant solution
+    peaks = [0]*256
+
+    step = 1
+    histW, histH = 256, 500
+    hist = drawHistogram(histogram, histW, histH)
+
+    """find peaks"""
+    for index in range(0, 256, step):
+        try:
+            if histogram[index] > histogram[index - step] and histogram[index] > histogram[index + step]:
+                #ignore values that are too white, they're just background
+                if index < 200:
+                    peaks.insert(index, histogram[index][0])
+                    cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
+        except:
+            print ("histogram at index: ", index, "gave an error")
+    # print(peaks)
+    maxHist = np.argmax(peaks)
+    threshToAdd = 35
+
+    #draw the entire histogram
+
+    #draw the two maxes
+
+    cv2.line(hist, (maxHist, 0), (maxHist, histH), (0, 0, 255), 1)
+    cv2.line(hist, (maxHist + threshToAdd, 0), (maxHist + threshToAdd, histH), (0, 255, 0), 1)
+    cv2.imshow("histogram", hist)
+
+    return maxHist + threshToAdd
+
 def binarizeImage(img):
     #This will extract features for template and second phase matching
     """This function converts the image to gray, puts a gaussian blur then does a thresh"""
-    #Not sure why it's a thresh to zero, maybe a binarize would be better - but for now this is just refactoring so just roll with it
-    #This should also be based on automatic parameter matching
-
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #Automatic thresholding - whatever the mean brightness is, just add a number
-    # plt.hist(img.ravel(),256, [0,256]); plt.show()
-    #
-    # cv2.imshow("before histomgram equalized", img)
-    # img = cv2.equalizeHist(img)
-
-    mean = int(cv2.mean(img)[0])
-
     # cv2.imshow("histogram equalized", img)
     img = cv2.GaussianBlur(img, (5,5), 0)
 
-    #note: if the image comes out too white, that means the threshold is too low, and if it comes out too black
-    #it means the threshold is too high
-    """
-    thresholdValue = mean + sigma
-
-    print("threshold value", thresholdValue)
-
-    if thresholdValue < 10:
-        #minimum is 10
-        thresholdValue = 10"""
-
+    #use an automatic threshold, based on histogram peak value
+    threshVal = convertToHistogramFindMaxPeakAndReturnThresh(img)
     # ret, img = cv2.threshold(img, thresholdValue,255, cv2.THRESH_BINARY)
-    img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 1)
+    ret, img = cv2.threshold(img, threshVal,255, cv2.THRESH_BINARY)
 
-    # img = cv2.bitwise_not(img)
-    #
     return img
 
-#TODO - Right now the template is only one, need to be able to add support for far more templates - need to return an array of images obv
 def getTemplate():
     # Begin Getting of Template
-    imgTemplate = cv2.imread('testTemplate0.png')
+    #it will just cycle through images, possibly until it can't anymore
+    templates = {}
+    try:
+        for x in range(0, 3):
+            imgTemplate = cv2.imread('testTemplate' + str(x) + '.png')
+            imgTemplate = imutils.resize(imgTemplate, width=300)
+            img = binarizeImage(imgTemplate)
+            templates[x] = img
+            cv2.imshow("template" + str(x), img)
+    except:
+        print("There was a problem getting a file template!")
 
-    # cv2.imshow("originalTemplate", imgTemplate)
+        # cv2.imshow("originalTemplate", imgTemplate)
 
     #TODO - set the size based on automatic parameters
-    imgTemplate = imutils.resize(imgTemplate, width=300)
 
-    img = binarizeImage(imgTemplate)
-
-    cv2.imshow("template", img)
-
-    return img
+    return templates
 
 def deskewImageBasedOnContour(contour, img):
     """This function correcs the rotation of the IC"""
@@ -135,7 +164,57 @@ def deskewImageBasedOnContour(contour, img):
     # cv2.imshow("deskewed", img)
     return img
 
-template[0] = getTemplate()
+def returnLargestAreaOfContours(npaContours):
+    """This function will take a thresholded image, find it's largest contour and return the ROI based on that"""
+
+    # cv2.drawContours(img, npaContours, -1, (255,0,0),1)
+    # cv2.imshow("contours",img)
+
+    arrayOfContourAreas = []
+
+    #This coding finds the largest Contour
+    for npaContour in npaContours:
+        (x, y, w, h) = cv2.boundingRect(npaContour)
+        if cv2.contourArea(npaContour) > 100:
+            arrayOfContourAreas.append(cv2.contourArea(npaContour))
+
+    if arrayOfContourAreas != []:
+        biggestIndex = np.argmax(arrayOfContourAreas)
+        # print("contour found")
+
+    #make sure that a contour exists, if not it'll crash
+    #Once youve found the ROI you need to do new thresholding similar to how you found the template
+
+    #This is the filtering process if it's an IC or not
+    #TODO - Deal with multiple use cases
+    #TODO 1 - Deal with multiple IC's on a single picture
+    #TODO 2 - Deal with an IC being on the edge, before fully coming into frame
+    #TODO 3 - Deal with varying areas of an IC and sort them before they even get into template matching
+
+    #TODO 4 - this code is not efficient! Need to find a better way to get the largest contour area!
+    try:
+        #need to make sure the area is found that's why we use except
+        for npaContour in npaContours:
+            if cv2.contourArea(npaContour) == arrayOfContourAreas[biggestIndex] and cv2.contourArea(npaContour) != 0:
+                # print(cv2.contourArea(npaContour), arrayOfContourAreas[biggestIndex])
+                largestContour = npaContour
+                # print("found!")
+                #break the inner loop
+                break
+                #the point of this else and break is so that I can break out of 2 loops, the inner if loop and the outer for loop, if not break will only break the if loop and not the foor loop
+            else:
+                #continue if the inner loop wasn't broken
+                continue
+                #if not break the outer loop
+            break
+    except:
+        return None
+
+    return largestContour
+        # img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
+        # cv2.imshow("Largest area contour", img)
+
+template = getTemplate()
 
 #End getting of template
 
@@ -171,106 +250,49 @@ while True:
     cv2.imshow("thresh",imgThresh)
 
     imgThreshCopy = imgThresh.copy()
-
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgThreshCopy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # cv2.drawContours(img, npaContours, -1, (255,0,0),1)
-    # cv2.imshow("contours",img)
 
-    arrayOfContourAreas = []
+    largestContourInImage = returnLargestAreaOfContours(npaContours)
 
-    #This coding finds the largest Contour
-    for npaContour in npaContours:
-        (x, y, w, h) = cv2.boundingRect(npaContour)
-        if cv2.contourArea(npaContour) > 100 and x > 0:
-            arrayOfContourAreas.append(cv2.contourArea(npaContour))
+    if largestContourInImage is not None:
+        #deskew the image
+        roi = deskewImageBasedOnContour(largestContourInImage, img)
 
-    if arrayOfContourAreas != []:
-        biggestIndex = np.argmax(arrayOfContourAreas)
-        # print("contour found")
-    else:
-        #this is in case no contours are found, so that the array isn't empty
-        arrayOfContourAreas.append(0)
-        biggestIndex = 0
-        # print("No contours were found")
+        imgThresh = binarizeImage(roi)
 
+        roi = cv2.resize(imgThresh, (250,100))
+        cv2.imshow('Image to match', roi)
 
-    #makes sure that a contour exists, if not it'll crash
-    #Once youve found the ROI you need to do new thresholding similar to how you found the template
+        scores = []
+        groupOutput = []
 
-    #This is the filtering process if it's an IC or not
-    #TODO - Deal with multiple use cases
-    #TODO 1 - Deal with multiple IC's on a single picture
-    #TODO 2 - Deal with an IC being on the edge, before fully coming into frame
-    #TODO 3 - Deal with varying areas of an IC and sort them before they even get into template matching
+        for(templateCount, templateROI) in template.items():
+            result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
+            #print(result)
+            (_,score,_,_) = cv2.minMaxLoc(result)
+            print(score)
+            scores.append(score)
 
-    #TODO 4 - this code is not efficient! Need to find a better way to get the largest contour area!
-    if len(npaContours) != 0:
-        #need to make sure the area is found if not it crashes
-        found = False
-        for npaContour in npaContours:
-            if cv2.contourArea(npaContour) == arrayOfContourAreas[biggestIndex] and cv2.contourArea(npaContour) != 0:
-                # print(cv2.contourArea(npaContour), arrayOfContourAreas[biggestIndex])
-                contours = npaContour
-                found = True
-                # print("found!")
-                #break the inner loop
-                break
-                #the point of this else and break is so that I can break out of 2 loops, the inner if loop and the outer for loop, if not break will only break the if loop and not the foor loop
+        arrayOfResults.append(str(np.argmax(scores)))
+        groupOutput.append(str(np.argmax(scores)))
+
+        #return the most frequent of 10 results
+        #this code will only run once every 10 frames
+        if len(arrayOfResults) == 10:
+            (x, y, w, h) = cv2.boundingRect(largestContourInImage)
+            counts = np.bincount(arrayOfResults)
+            string = str(np.argmax(counts))
+            #only show if it's above the acceptable threshold
+            if max(scores) > acceptedThreshold:
+                cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
             else:
-                #continue if the inner loop wasn't broken
-                continue
-                #if not break the outer loop
-            break
-        # img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
-        # cv2.imshow("Largest area contour", img)
+                cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-        if found:
-            #deskew the image
-            roi = deskewImageBasedOnContour(contours, img)
-
-            # cv2.imshow("deskewed Image", roi)
-
-            # imgGray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
-            #
-            # #imgDenoised = cv2.fastNlMeansDenoising(roi, None,10,10,7,21)
-            # imgblur = cv2.GaussianBlur(imgGray, (1,1), 0)
-            # imgThresh = cv2.adaptiveThreshold(imgblur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-            #
-            # #imgThresh = cv2.morphologyEx(imgThresh, cv2.MORPH_OPEN, kernel)
-            imgThresh = binarizeImage(roi)
-
-            roi = cv2.resize(imgThresh, (250,100))
-            cv2.imshow('Image to match', roi)
-
-            scores = []
-            groupOutput = []
-
-            for(templateCount, templateROI) in template.items():
-                result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
-                #print(result)
-                (_,score,_,_) = cv2.minMaxLoc(result)
-                print(score)
-                scores.append(score)
-
-            arrayOfResults.append(str(np.argmax(scores)))
-            groupOutput.append(str(np.argmax(scores)))
-
-            #return the most frequent of 10 results
-            if len(arrayOfResults) == 10:
-                (x, y, w, h) = cv2.boundingRect(contours)
-                counts = np.bincount(arrayOfResults)
-                string = str(np.argmax(counts))
-                #only show if it's above the acceptable threshold
-                if max(scores) > acceptedThreshold:
-                    cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(contours)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                else:
-                    cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(contours)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                cv2.imshow('final', img)
-                arrayOfResults = []
-            # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            # cv2.imshow('final', img)
-            #print('type detected : ' + "".join(groupOutput))
+            cv2.imshow('final', img)
+            arrayOfResults = []
+        # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        # cv2.imshow('final', img)
+        #print('type detected : ' + "".join(groupOutput))
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
