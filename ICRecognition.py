@@ -88,7 +88,7 @@ def getTemplate():
     # try:
     for x in range(0, 3):
         imgTemplate = cv2.imread('testTemplate' + str(x) + '.png')
-        imgTemplate = imutils.resize(imgTemplate, width=300)
+        imgTemplate = imutils.resize(imgTemplate, width=600)
         img = binarizeImage(imgTemplate)
         img = cv2.bitwise_not(img)
         imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
