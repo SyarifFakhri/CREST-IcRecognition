@@ -3,12 +3,11 @@ from imutils import contours
 import numpy as np
 import imutils
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
-sigma = -50
 MIN_CONTOUR_AREA = 500
 thresholdValue = 60
-
+count = 0
 def convertToHistogramFindMaxPeakAndReturnThresh(img):
     """calculates the histogram, smooths histogram, then plots the histogram of the image. Also plots the peaks"""
     """Purple is the threshold value, white is all the peaks,red is the two max peaks, green is the mean value"""
@@ -66,7 +65,6 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img):
 
     return maxHist + thresh
 
-
 def binarizeImage(img):
     #This will extract features for template and second phase matching
     """This function converts the image to gray, puts a gaussian blur then does a thresh"""
@@ -115,8 +113,15 @@ while True:
     binarized = binarizeImage(img)
     cv2.imshow("binarized", binarized)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        cv2.imwrite("template.png", img)
+    key = cv2.waitKey(1)
+
+    if key == 32:
+        cv2.imwrite('templateCreator' + str(count) +'.png', img)
+        count += 1
+        print("Image saved")
+
+    if key == 27:  # (escape to quit)
+        cv2.destroyAllWindows()
         break
 
 #then do the output stuff
