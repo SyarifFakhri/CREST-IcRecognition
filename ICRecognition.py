@@ -11,18 +11,20 @@ from matplotlib import pyplot as plt
 MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
-threshToAddForDetail = 5
-threshToAddForGeneral = 10
+threshToAddForDetail = 0
+threshToAddForGeneral = 0
+global sampleNum
+sampleNum = 0
 
-sampleX = 100
-sampleY = 100
+sampleX = 50
+sampleY = 50
 
 #have one bigModel for large ICs and one small model for small ICs
 bigModel = cv2.ml.KNearest_create()
 
 cap = cv2.VideoCapture(1)
-cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
-cap.set(cv2.CAP_PROP_EXPOSURE, 15)  # Doesn't work lel
+cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
+
 #TODO - Sort according to size first then sort according to type
 #TODO - stop the conveyor belt when the ic is in view
 #TODO - push the IC into the sorting boxes
@@ -93,20 +95,21 @@ def binarizeImage(img, withThreshToAdd):
     return img
 
 def getTemplate():
-
-    numberOfSamples = 0
+    global sampleNum
     # Begin Getting of Template
     #it will just cycle through images, possibly until it can't anymore
     samples = np.empty((0,sampleX*sampleY))
-    print(numberOfSamples)
     try:
         while True:
-            imgTemplate = cv2.imread('templateCreator' + str(numberOfSamples) + '.png')
+            imgTemplate = cv2.imread('templateCreator' + str(sampleNum) + '.png')
             imgTemplate = imutils.resize(imgTemplate, width=300)
 
             #find the general area of the picture
             img = binarizeImage(imgTemplate, threshToAddForGeneral)
             img = cv2.bitwise_not(img)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+            img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
+
             imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
                                                                       cv2.CHAIN_APPROX_SIMPLE)
             contour = returnLargestAreaOfContours(npaContours)
@@ -119,12 +122,13 @@ def getTemplate():
 
             sample = extractFeatureFromImageForKNN(img)
             samples = np.append(samples, sample, 0).astype(np.float32)
-            if numberOfSamples % 10 == 0:
-                cv2.imshow("template" + str(numberOfSamples), img)
-            numberOfSamples = numberOfSamples + 1
+            if sampleNum % 20 == 0:
+                cv2.imshow("template" + str(sampleNum), img)
+            sampleNum = sampleNum + 1
+            print("template:" + str(sampleNum) + " loaded")
 
     except:
-        print("There are no more file templates! Last count was: ", numberOfSamples)
+        print("There are no more file templates! Last count was: ", sampleNum)
 
         # cv2.imshow("originalTemplate", imgTemplate)
 
@@ -253,7 +257,7 @@ def extractFeatureFromImageForKNN(img):
 
 templateSamples = getTemplate()
 
-responses = [[0]*10,[1]*10, [2]*10] #this is actually KNN responses array, it should actually correspond to the type inside the template samples
+responses = [[0]*20,[1]*20, [2]*20, [3]*20, [4]*20] #this is actually KNN responses array, it should actually correspond to the type inside the template samples
 #convert to numpy to make it faster
 responses = np.array(responses, np.float32)
 responses = responses.reshape((responses.size,1))
@@ -291,7 +295,7 @@ while True:
         # cv2.imshow("imgThresh", imgThresh)
         #make sure that the roi is the same size as the templates
         #if the templates are bigger then the program will crash
-        roi = cv2.resize(imgThresh, (300,200))
+        roi = imutils.resize(imgThresh, width=300 )
         cv2.imshow('Image to match', roi)
 
         scores = []
@@ -338,7 +342,8 @@ while True:
         # cv2.imshow('final', img)
         #print('type detected : ' + "".join(groupOutput))
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(1) == 27: #escape to break
         break
 
 cap.release()

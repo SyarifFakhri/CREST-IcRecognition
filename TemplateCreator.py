@@ -4,16 +4,16 @@ import numpy as np
 import imutils
 
 cap = cv2.VideoCapture(1)
-cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
-cap.set(cv2.CAP_PROP_EXPOSURE, 15)  # Doesn't work lel
+# cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
+# cap.set(cv2.CAP_PROP_BRIGHTNESS, 0)  # Doesn't work lel
 
 MIN_CONTOUR_AREA = 500
 thresholdValue = 60
 #when you change it here change it in the recognizer as well!
-threshToAddForDetail = 5
-threshToAddForGeneral = 10
+threshToAddForDetail = 0
+threshToAddForGeneral = 0
 
-count = 0
+count = 60
 
 def drawHistogram(histogram, histW, histH):
 
@@ -35,7 +35,7 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img, threshToAdd):
     peaks = [0]*256
 
     step = 1
-    histW, histH = 256, 500
+    histW, histH = 256, 200
     hist = drawHistogram(histogram, histW, histH)
 
     """find peaks"""
@@ -227,13 +227,16 @@ def returnLargestAreaOfContours(npaContours):
 # capture first
 while True:
     ret, imgTemplate = cap.read()
+
     # img = cv2.imread("testTemplate8.png")
     imgTemplate = imutils.resize(imgTemplate, width=300)
 
     # find the general area of the picture
     img = binarizeImage(imgTemplate, threshToAddForGeneral)
     img = cv2.bitwise_not(img)
-
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+    img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
+    cv2.imshow("general binarization", img)
     try:
         imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
                                                                   cv2.CHAIN_APPROX_SIMPLE)
