@@ -13,6 +13,8 @@ acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 threshToAddForDetail = 0
 threshToAddForGeneral = 0
+amountOfICs = 2
+numberOfTemplates = 5
 k = 3
 
 arrayOfResults = []
@@ -285,8 +287,6 @@ templates = getTemplate()
 while True:
 
     response = []
-    amountOfICs = 2
-    numberOfTemplates = 5
     for ICs in range(0, amountOfICs):
         for number in range(0, numberOfTemplates):
             response.append(ICs)
