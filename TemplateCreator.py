@@ -3,7 +3,7 @@ from imutils import contours
 import numpy as np
 import imutils
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 #150 images roughly translates to about 40 mb
 #
 # cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
@@ -15,16 +15,16 @@ MIN_CONTOUR_AREA = 500
 threshToAddForDetail = 0
 threshToAddForGeneral = 0
 
-sampleX = 100
-sampleY = 100
-samples = np.empty((0, sampleX * sampleY))
+# sampleX = 100
+# sampleY = 100
+# samples = np.empty((0, sampleX * sampleY))
 
 #this is actually KNN responses array, it should actually correspond to the type inside the template samples
-responses = [[0]*10,[1]*10]
+# responses = [[0]*10,[1]*10]
 
 #convert to numpy to make it faster
-responses = np.array(responses, np.float32)
-responses = responses.reshape((responses.size,1))
+# responses = np.array(responses, np.float32)
+# responses = responses.reshape((responses.size,1))
 #End getting of template
 
 count = 1
@@ -244,15 +244,13 @@ while True:
     if key == 32:
         #space to save the image
         # cv2.imwrite('templateCreator' + str(count) +'.png', imgTemplate)
-        sample = extractFeatureFromImageForKNN(img)
-        samples = np.append(samples, sample, 0).astype(np.float32)
+        # sample = extractFeatureFromImageForKNN(img)
+        cv2.imwrite("templateCreator" + str(count) + ".png", imgTemplate)
         print("Image saved" + str(count))
         count += 1
 
     if key == 27:  # (escape to quit)
         cv2.destroyAllWindows()
-        np.savetxt('generalSamples.data', samples)
-        np.savetxt('generalResponses.data', responses)
         break
 
 #then do the output stuff

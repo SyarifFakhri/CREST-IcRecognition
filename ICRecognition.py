@@ -13,21 +13,26 @@ acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 threshToAddForDetail = 0
 threshToAddForGeneral = 0
-# global sampleNum
-# sampleNum = 0
 
-samples = np.loadtxt('generalsamples.data',np.float32)
-responses = np.loadtxt('generalResponses.data', np.float32)
+response = [[0]*5,[1]*5]
 
-sampleX = 100
+arrayOfResults = []
+
+global sampleNum
+sampleNum = 1
+
+# samples = np.loadtxt('generalsamples.data',np.float32)
+# responses = np.loadtxt('generalResponses.data', np.float32)
+
+"""sampleX = 100
 sampleY = 100
 
-k = 3
+k = 3"""
 
-#have one bigModel for large ICs and one small model for small ICs
+"""#have one bigModel for large ICs and one small model for small ICs
 bigModel = cv2.ml.KNearest_create()
-
-cap = cv2.VideoCapture(1)
+"""
+cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
 
 #TODO - Sort according to size first then sort according to type
@@ -99,11 +104,11 @@ def binarizeImage(img, withThreshToAdd):
 
     return img
 
-"""def getTemplate():
+def getTemplate():
     global sampleNum
     # Begin Getting of Template
     #it will just cycle through images, possibly until it can't anymore
-    samples = np.empty((0,sampleX*sampleY))
+    samples = []
     try:
         while True:
             imgTemplate = cv2.imread('templateCreator' + str(sampleNum) + '.png')
@@ -125,22 +130,22 @@ def binarizeImage(img, withThreshToAdd):
             img = imutils.resize(img, width=300)
             img = binarizeImage(img, threshToAddForDetail)
 
-            sample = extractFeatureFromImageForKNN(img)
-            samples = np.append(samples, sample, 0).astype(np.float32)
+            # sample = extractFeatureFromImageForKNN(img)
+            samples.append(img)
+
             if sampleNum % 20 == 0:
                 cv2.imshow("template" + str(sampleNum), img)
-            sampleNum = sampleNum + 1
             print("template:" + str(sampleNum) + " loaded")
+            sampleNum = sampleNum + 1
 
     except:
-        print("There are no more file templates! Last count was: ", sampleNum)
+        print("There are no more file templates! Last count was: ", sampleNum - 1)
 
         # cv2.imshow("originalTemplate", imgTemplate)
 
     #TODO - set the size based on automatic parameters
 
     return samples
-"""
 
 def deskewImageBasedOnContour(contour, img):
     """This function corrects the rotation of the IC"""
@@ -255,15 +260,16 @@ def returnLargestAreaOfContours(npaContours):
         # img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
         # cv2.imshow("Largest area contour", img)
 
-def extractFeatureFromImageForKNN(img):
-    """takes an image, resizes it into it's features and then returns an array"""
-    roismall = cv2.resize(img, (sampleX, sampleY))
-    sample = roismall.reshape((1, sampleX*sampleY))
-    return sample
+# def extractFeatureFromImageForKNN(img):
+#     """takes an image, resizes it into it's features and then returns an array"""
+#     roismall = cv2.resize(img, (sampleX, sampleY))
+#     sample = roismall.reshape((1, sampleX*sampleY))
+#     return sample
 
 # templateSamples = getTemplate()
 
-bigModel.train(samples, cv2.ml.ROW_SAMPLE, responses)
+# bigModel.train(samples, cv2.ml.ROW_SAMPLE, responses)
+templates = getTemplate()
 
 while True:
 
@@ -295,25 +301,26 @@ while True:
         # cv2.imshow("imgThresh", imgThresh)
         #make sure that the roi is the same size as the templates
         #if the templates are bigger then the program will crash
-        roi = imutils.resize(imgThresh, width=300 )
+        roi = imutils.resize(imgThresh, width=300)
         cv2.imshow('Image to match', roi)
 
-        """        scores = []
-        groupOutput = []"""
 
-        roi = extractFeatureFromImageForKNN(roi)
-        roi = np.float32(roi)
+        # roi = extractFeatureFromImageForKNN(roi)
+        # roi = np.float32(roi)
 
-        retval, results, neighResp, dists = bigModel.findNearest(roi, k=k)
-        string = str(int((results[0][0])))
+        # retval, results, neighResp, dists = bigModel.findNearest(roi, k=k)
+        # string = str(int((results[0][0])))
 
-        (x, y, w, h) = cv2.boundingRect(largestContourInImage)
+        # (x, y, w, h) = cv2.boundingRect(largestContourInImage)
 
-        cv2.putText(img, "Type " + "".join(string) + ": Area of contour: " + str(cv2.contourArea(largestContourInImage)),
-                    (x, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-        cv2.imshow("final", img)
+        # cv2.putText(img, "Type " + "".join(string) + ": Area of contour: " + str(cv2.contourArea(largestContourInImage)),
+        #             (x, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        # cv2.imshow("final", img)
 
-        """for(templateCount, templateROI) in template.items():
+        scores = []
+        # groupOutput = []
+
+        for(templateCount, templateROI) in enumerate(templates):
             result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
             #print(result)
             (_,score,_,_) = cv2.minMaxLoc(result)
@@ -321,10 +328,11 @@ while True:
             scores.append(score)
 
         arrayOfResults.append(str(np.argmax(scores)))
-        groupOutput.append(str(np.argmax(scores)))
 
-        #return the most frequent of 10 results
-        #this code will only run once every 10 frames
+        # groupOutput.append(str(np.argmax(scores)))
+
+        #return the most frequent of n results
+        #this code will only run once every n frames
         if len(arrayOfResults) == 2:
             (x, y, w, h) = cv2.boundingRect(largestContourInImage)
             #np.bincount returns the most frequent result in the array of results
@@ -332,12 +340,12 @@ while True:
             string = str(np.argmax(counts))
             #only show if it's above the acceptable threshold
             if max(scores) > acceptedThreshold:
-                cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
             else:
-                cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
             cv2.imshow('final', img)
-            arrayOfResults = []"""
+            arrayOfResults = []
         # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         # cv2.imshow('final', img)
         #print('type detected : ' + "".join(groupOutput))
