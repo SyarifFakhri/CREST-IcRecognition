@@ -315,6 +315,7 @@ while True:
 
         # cv2.putText(img, "Type " + "".join(string) + ": Area of contour: " + str(cv2.contourArea(largestContourInImage)),
         #             (x, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        #test
         # cv2.imshow("final", img)
 
         scores = []
