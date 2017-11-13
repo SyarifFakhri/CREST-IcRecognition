@@ -346,6 +346,7 @@ while True:
             # print(score)
             scores.append(score)
 
+        maxScores = max(scores)
         combinedResults = []
         # currentIndex = 0
         # #note: the response array here is an array that contains the number of responses each IC has. So [5,5] would mean
@@ -370,18 +371,22 @@ while True:
         #need to combine the scores into one mean score per IC
 
         print(combinedResults)
-        arrayOfResults.append(str(np.argmax(combinedResults)))
+
+        count = np.bincount(combinedResults)
+        maximumCount = np.argmax(count)
+        arrayOfResults.append(maximumCount)
         # groupOutput.append(str(np.argmax(scores)))
 
         #return the most frequent of n results
         #this code will only run once every n frames
-        if len(arrayOfResults) == 2:
+        if len(arrayOfResults) == 1:
             (x, y, w, h) = cv2.boundingRect(largestContourInImage)
             #np.bincount returns the most frequent result in the array of results
             counts = np.bincount(arrayOfResults)
-            string = str(np.argmax(counts))
+            maximumCount = np.argmax(counts)
+            string = str(maximumCount)
             #only show if it's above the acceptable threshold
-            if max(scores) > acceptedThreshold:
+            if maxScores > acceptedThreshold:
                 cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
             else:
                 cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
