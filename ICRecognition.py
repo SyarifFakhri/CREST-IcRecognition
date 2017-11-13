@@ -13,9 +13,7 @@ acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 threshToAddForDetail = 0
 threshToAddForGeneral = 0
-
-
-response = [5,5]
+k = 3
 
 arrayOfResults = []
 
@@ -210,17 +208,17 @@ def deskewImageBasedOnContour(contour, img):
     # cv2.imshow("deskewed", img)
     return img
 
-def getMeanofAnArrayFromXtoY(array, x, y):
-    summation = 0
-    count = 0
-    #get the sum first
-    for index in range(x, y):
-        summation = summation + array[index]
-        count += 1
-    mean = (summation)/count
-
-    return mean
-
+# def getMeanofAnArrayFromXtoY(array, x, y):
+#     summation = 0
+#     count = 0
+#     #get the sum first
+#     for index in range(x, y):
+#         summation = summation + array[index]
+#         count += 1
+#     mean = (summation)/count
+#
+#     return mean
+#
 
 def returnLargestAreaOfContours(npaContours):
     """This function will take a thresholded image, find it's largest contour and return the ROI based on that"""
@@ -286,6 +284,13 @@ templates = getTemplate()
 
 while True:
 
+    response = []
+    amountOfICs = 2
+    numberOfTemplates = 5
+    for ICs in range(0, amountOfICs):
+        for number in range(0, numberOfTemplates):
+            response.append(ICs)
+
     # cap.set(cv2.CAP_PROP_EXPOSURE, 1)
     ret, img = cap.read()
 
@@ -342,13 +347,25 @@ while True:
             scores.append(score)
 
         combinedResults = []
-        currentIndex = 0
-        #note: the response array here is an array that contains the number of responses each IC has. So [5,5] would mean
-        #a total of 10 ic templates and the first 5 correspond to IC 0, second 5 correspond to IC 1...etc
-        for x in response:
-            mean = getMeanofAnArrayFromXtoY(scores, currentIndex, currentIndex + x)
-            combinedResults.append(mean)
-            currentIndex = currentIndex + x
+        # currentIndex = 0
+        # #note: the response array here is an array that contains the number of responses each IC has. So [5,5] would mean
+        # #a total of 10 ic templates and the first 5 correspond to IC 0, second 5 correspond to IC 1...etc
+        # for x in response:
+        #     mean = getMeanofAnArrayFromXtoY(scores, currentIndex, currentIndex + x)
+        #     combinedResults.append(mean)
+        #     currentIndex = currentIndex + x
+
+        #use knn instead of just mean
+        for x in range(0, k):
+            maxIndex = np.argmax(scores)
+            #put the closest inside the combined results array
+            combinedResults.append(response.pop(maxIndex))
+
+            #pop that one from the scores
+            #what you should end up with is the n closest scores in the combinedresults array
+            scores.pop(maxIndex)
+
+
 
         #need to combine the scores into one mean score per IC
 
