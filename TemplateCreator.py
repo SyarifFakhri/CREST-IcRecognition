@@ -4,16 +4,30 @@ import numpy as np
 import imutils
 
 cap = cv2.VideoCapture(1)
+#150 images roughly translates to about 40 mb
+#
 # cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
 # cap.set(cv2.CAP_PROP_BRIGHTNESS, 0)  # Doesn't work lel
 
 MIN_CONTOUR_AREA = 500
-thresholdValue = 60
+# thresholdValue = 60
 #when you change it here change it in the recognizer as well!
 threshToAddForDetail = 0
 threshToAddForGeneral = 0
 
-count = 60
+sampleX = 100
+sampleY = 100
+samples = np.empty((0, sampleX * sampleY))
+
+#this is actually KNN responses array, it should actually correspond to the type inside the template samples
+responses = [[0]*10,[1]*10]
+
+#convert to numpy to make it faster
+responses = np.array(responses, np.float32)
+responses = responses.reshape((responses.size,1))
+#End getting of template
+
+count = 1
 
 def drawHistogram(histogram, histW, histH):
 
@@ -75,41 +89,6 @@ def binarizeImage(img, withThreshToAdd):
     ret, img = cv2.threshold(img, threshVal,255, cv2.THRESH_BINARY)
 
     return img
-
-def getTemplate():
-    # Begin Getting of Template
-    #it will just cycle through images, possibly until it can't anymore
-    samples = np.empty((0,sampleX*sampleY))
-    # try:
-    for x in range(0, 7):
-        imgTemplate = cv2.imread('templateCreator' + str(x) + '.png')
-        imgTemplate = imutils.resize(imgTemplate, width=300)
-
-        #find the general area of the picture
-        img = binarizeImage(imgTemplate, threshToAddForGeneral)
-        img = cv2.bitwise_not(img)
-        imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
-                                                                  cv2.CHAIN_APPROX_SIMPLE)
-        contour = returnLargestAreaOfContours(npaContours)
-
-        img = deskewImageBasedOnContour(contour, imgTemplate)
-
-        #Then get the details
-        img = imutils.resize(img, width=300)
-        img = binarizeImage(img, threshToAddForDetail)
-
-        sample = extractFeatureFromImageForKNN(img)
-        samples = np.append(samples, sample, 0).astype(np.float32)
-
-        cv2.imshow("template" + str(x), img)
-    # except:
-    #     print("There was a problem getting a file template!")
-
-        # cv2.imshow("originalTemplate", imgTemplate)
-
-    #TODO - set the size based on automatic parameters
-
-    return samples
 
 def deskewImageBasedOnContour(contour, img):
     """This function corrects the rotation of the IC"""
@@ -224,6 +203,12 @@ def returnLargestAreaOfContours(npaContours):
         # img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
         # cv2.imshow("Largest area contour", img)
 
+def extractFeatureFromImageForKNN(img):
+    """takes an image, resizes it into it's features and then returns an array"""
+    roismall = cv2.resize(img, (sampleX, sampleY))
+    sample = roismall.reshape((1, sampleX*sampleY))
+    return sample
+
 # capture first
 while True:
     ret, imgTemplate = cap.read()
@@ -237,6 +222,7 @@ while True:
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
     img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
     cv2.imshow("general binarization", img)
+
     try:
         imgContours, npaContours, npaHierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL,
                                                                   cv2.CHAIN_APPROX_SIMPLE)
@@ -257,12 +243,16 @@ while True:
 
     if key == 32:
         #space to save the image
-        cv2.imwrite('templateCreator' + str(count) +'.png', imgTemplate)
+        # cv2.imwrite('templateCreator' + str(count) +'.png', imgTemplate)
+        sample = extractFeatureFromImageForKNN(img)
+        samples = np.append(samples, sample, 0).astype(np.float32)
         print("Image saved" + str(count))
         count += 1
 
     if key == 27:  # (escape to quit)
         cv2.destroyAllWindows()
+        np.savetxt('generalSamples.data', samples)
+        np.savetxt('generalResponses.data', responses)
         break
 
 #then do the output stuff

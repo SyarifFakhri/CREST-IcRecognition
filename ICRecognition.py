@@ -13,11 +13,16 @@ acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 threshToAddForDetail = 0
 threshToAddForGeneral = 0
-global sampleNum
-sampleNum = 0
+# global sampleNum
+# sampleNum = 0
 
-sampleX = 50
-sampleY = 50
+samples = np.loadtxt('generalsamples.data',np.float32)
+responses = np.loadtxt('generalResponses.data', np.float32)
+
+sampleX = 100
+sampleY = 100
+
+k = 3
 
 #have one bigModel for large ICs and one small model for small ICs
 bigModel = cv2.ml.KNearest_create()
@@ -30,8 +35,8 @@ cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
 #TODO - push the IC into the sorting boxes
 #TODO - Deal with upside down cases!
 
-template = {}
-arrayOfResults = []
+# template = {}
+# arrayOfResults = []
 
 def drawHistogram(histogram, histW, histH):
 
@@ -94,7 +99,7 @@ def binarizeImage(img, withThreshToAdd):
 
     return img
 
-def getTemplate():
+"""def getTemplate():
     global sampleNum
     # Begin Getting of Template
     #it will just cycle through images, possibly until it can't anymore
@@ -135,6 +140,7 @@ def getTemplate():
     #TODO - set the size based on automatic parameters
 
     return samples
+"""
 
 def deskewImageBasedOnContour(contour, img):
     """This function corrects the rotation of the IC"""
@@ -255,15 +261,9 @@ def extractFeatureFromImageForKNN(img):
     sample = roismall.reshape((1, sampleX*sampleY))
     return sample
 
-templateSamples = getTemplate()
+# templateSamples = getTemplate()
 
-responses = [[0]*20,[1]*20, [2]*20, [3]*20, [4]*20] #this is actually KNN responses array, it should actually correspond to the type inside the template samples
-#convert to numpy to make it faster
-responses = np.array(responses, np.float32)
-responses = responses.reshape((responses.size,1))
-#End getting of template
-
-bigModel.train(templateSamples, cv2.ml.ROW_SAMPLE, responses)
+bigModel.train(samples, cv2.ml.ROW_SAMPLE, responses)
 
 while True:
 
@@ -298,13 +298,13 @@ while True:
         roi = imutils.resize(imgThresh, width=300 )
         cv2.imshow('Image to match', roi)
 
-        scores = []
-        groupOutput = []
+        """        scores = []
+        groupOutput = []"""
 
         roi = extractFeatureFromImageForKNN(roi)
         roi = np.float32(roi)
 
-        retval, results, neighResp, dists = bigModel.findNearest(roi, k=5)
+        retval, results, neighResp, dists = bigModel.findNearest(roi, k=k)
         string = str(int((results[0][0])))
 
         (x, y, w, h) = cv2.boundingRect(largestContourInImage)
