@@ -14,7 +14,8 @@ acceptedThreshold = 0.1
 threshToAddForDetail = 0
 threshToAddForGeneral = 0
 
-response = [[0]*5,[1]*5]
+
+response = [5,5]
 
 arrayOfResults = []
 
@@ -112,7 +113,7 @@ def getTemplate():
     try:
         while True:
             imgTemplate = cv2.imread('templateCreator' + str(sampleNum) + '.png')
-            imgTemplate = imutils.resize(imgTemplate, width=300)
+            imgTemplate = imutils.resize(imgTemplate, width=300, height=200)
 
             #find the general area of the picture
             img = binarizeImage(imgTemplate, threshToAddForGeneral)
@@ -127,13 +128,13 @@ def getTemplate():
             img = deskewImageBasedOnContour(contour, imgTemplate)
 
             #Then get the details
-            img = imutils.resize(img, width=300)
+            img = imutils.resize(img, width=300, height=200)
             img = binarizeImage(img, threshToAddForDetail)
 
             # sample = extractFeatureFromImageForKNN(img)
             samples.append(img)
 
-            if sampleNum % 20 == 0:
+            if sampleNum % 5 == 0:
                 cv2.imshow("template" + str(sampleNum), img)
             print("template:" + str(sampleNum) + " loaded")
             sampleNum = sampleNum + 1
@@ -209,6 +210,18 @@ def deskewImageBasedOnContour(contour, img):
     # cv2.imshow("deskewed", img)
     return img
 
+def getMeanofAnArrayFromXtoY(array, x, y):
+    summation = 0
+    count = 0
+    #get the sum first
+    for index in range(x, y):
+        summation = summation + array[index]
+        count += 1
+    mean = (summation)/count
+
+    return mean
+
+
 def returnLargestAreaOfContours(npaContours):
     """This function will take a thresholded image, find it's largest contour and return the ROI based on that"""
 
@@ -280,7 +293,7 @@ while True:
     #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 
     #Get the image threshold
-    img = imutils.resize(img, width=300)
+    img = imutils.resize(img, width=300, height=200)
     cv2.imshow("Original", img)
     imgThresh = binarizeImage(img, threshToAddForGeneral)         # get grayscale image
     imgThresh = cv2.bitwise_not(imgThresh)
@@ -325,11 +338,22 @@ while True:
             result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
             #print(result)
             (_,score,_,_) = cv2.minMaxLoc(result)
-            print(score)
+            # print(score)
             scores.append(score)
 
-        arrayOfResults.append(str(np.argmax(scores)))
+        combinedResults = []
+        currentIndex = 0
+        #note: the response array here is an array that contains the number of responses each IC has. So [5,5] would mean
+        #a total of 10 ic templates and the first 5 correspond to IC 0, second 5 correspond to IC 1...etc
+        for x in response:
+            mean = getMeanofAnArrayFromXtoY(scores, currentIndex, currentIndex + x)
+            combinedResults.append(mean)
+            currentIndex = currentIndex + x
 
+        #need to combine the scores into one mean score per IC
+
+        print(combinedResults)
+        arrayOfResults.append(str(np.argmax(combinedResults)))
         # groupOutput.append(str(np.argmax(scores)))
 
         #return the most frequent of n results

@@ -203,11 +203,11 @@ def returnLargestAreaOfContours(npaContours):
         # img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
         # cv2.imshow("Largest area contour", img)
 
-def extractFeatureFromImageForKNN(img):
-    """takes an image, resizes it into it's features and then returns an array"""
-    roismall = cv2.resize(img, (sampleX, sampleY))
-    sample = roismall.reshape((1, sampleX*sampleY))
-    return sample
+# def extractFeatureFromImageForKNN(img):
+#     """takes an image, resizes it into it's features and then returns an array"""
+#     roismall = cv2.resize(img, (sampleX, sampleY))
+#     sample = roismall.reshape((1, sampleX*sampleY))
+#     return sample
 
 # capture first
 while True:
