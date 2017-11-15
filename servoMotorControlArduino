@@ -1,0 +1,82 @@
+from PyMata.pymata import PyMata
+import time
+
+"""
+Notes:
+- IR will initialize with 0 as default, then change to read the actual value, that's why count is -1
+- 0 is detected, 1 is not detected
+"""
+
+board=PyMata("/dev/ttyUSB0", verbose=True)
+
+PIN_SERVO_0 = 10
+PIN_SERVO_1 = 11
+PIN_SERVO_2 = 12
+
+PIN_IR_0 = 6
+PIN_IR_1 = 7
+PIN_IR_2 = 8
+
+#3 is the one at the camera
+PIN_IR_3 = 9
+
+board.set_pin_mode(PIN_IR_0, board.INPUT, board.DIGITAL)
+board.set_pin_mode(PIN_IR_1, board.INPUT, board.DIGITAL)
+board.set_pin_mode(PIN_IR_2, board.INPUT, board.DIGITAL)
+board.set_pin_mode(PIN_IR_3, board.INPUT, board.DIGITAL)
+
+
+board.servo_config(PIN_SERVO_0)
+board.servo_config(PIN_SERVO_1)
+board.servo_config(PIN_SERVO_2)
+
+class servoMotor(object):
+    def __init__(self, pinServo, pinIR):
+        self.pin = pinServo
+        self.pinIR = pinIR
+
+        self.count = 0
+        self.ignoreArray = []
+
+        self.previousIR = 0
+
+    def turnServo(self):
+        n = board.digital_read(self.pinIR)
+
+        if self.ignoreArray == [] and n == 1:
+            print("motor moving")
+            board.analog_write(self.pin,180)
+            time.sleep(1)
+            board.analog_write(self.pin, 0)
+            time.sleep(1)
+            
+    def addIgnoreArray(self):
+        self.ignoreArray.append(1)
+    
+    def removeIgnoreArray(self):
+        if self.ignoreArray != []:
+            n = board.digital_read(self.pinIR)
+            print(n)
+            time.sleep(0.5)
+            if n != self.previousIR:
+                
+                self.count = self.count + 1
+                self.previousIR = n
+                print("count increased to ", self.count)
+                
+                if self.count == 2:
+                    self.ignoreArray.pop()
+                    self.count = 0
+                
+servo0 = servoMotor(PIN_SERVO_0, PIN_IR_0)
+servo1 = servoMotor(PIN_SERVO_1, PIN_IR_1)
+servo2 = servoMotor(PIN_SERVO_2, PIN_IR_2)
+
+while True:
+        servo0.turnServo()
+        servo0.removeIgnoreArray()
+
+
+
+
+
