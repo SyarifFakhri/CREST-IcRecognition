@@ -3,7 +3,7 @@ from imutils import contours
 import numpy as np
 import imutils
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 #150 images roughly translates to about 40 mb
 #
 # cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
@@ -12,8 +12,8 @@ cap = cv2.VideoCapture(0)
 MIN_CONTOUR_AREA = 500
 # thresholdValue = 60
 #when you change it here change it in the recognizer as well!
-threshToAddForDetail = 0
-threshToAddForGeneral = 0
+threshToAddForDetail = 35
+threshToAddForGeneral = 20
 
 # sampleX = 100
 # sampleY = 100
