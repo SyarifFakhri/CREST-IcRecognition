@@ -268,7 +268,7 @@ while True:
     threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgResized, threshToAddForGeneral)         # get grayscale image
     imgInverted = cv2.bitwise_not(imgThresh)
 
-    cv2.imshow("General thresh",imgInverted)
+    # cv2.imshow("General thresh",imgInverted)
 
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgInverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     largestContourInImage = returnLargestAreaOfContours(npaContours)
@@ -280,20 +280,20 @@ while True:
         # print("The area of the contour is: ", cv2.contourArea(largestContourInImage))
         #deskew the image
         roi = deskewImageBasedOnContour(largestContourInImage, imgGrayAndBlurred)
-        cv2.imshow("deskewed", roi)
+        # cv2.imshow("deskewed", roi)
 
         # cv2.drawContours(imgGrayAndBlurred, largestContourInImage, -1, (255,255,255), 1)
 
-        cv2.imshow("grayAndBlurred", imgGrayAndBlurred)
+        # cv2.imshow("grayAndBlurred", imgGrayAndBlurred)
 
         # cv2.imshow("deskewed", roi)
         ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
-        cv2.imshow("imgThresh", imgThresh)
+        # cv2.imshow("imgThresh", imgThresh)
 
         #make sure that the roi is the same size as the templates
         #if the templates are bigger then the program will crash
         roi = cv2.resize(imgThresh, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
-        cv2.imshow('Image to match', roi)
+        # cv2.imshow('Image to match', roi)
 
         scores = []
 
