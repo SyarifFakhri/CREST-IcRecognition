@@ -8,11 +8,13 @@ from matplotlib import pyplot as plt
 #from PIL import Image
 
 
-MIN_CONTOUR_AREA = 500
+MIN_CONTOUR_AREA = 1000
 acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
-threshToAddForDetail = 35
-threshToAddForGeneral = 20
+
+threshToAddForDetail = 0
+threshToAddForGeneral = 5
+
 amountOfICs = 2
 numberOfTemplates = 5
 widthImg = 300
@@ -36,8 +38,8 @@ k = 3"""
 bigModel = cv2.ml.KNearest_create()
 """
 # try:
-cap = cv2.VideoCapture(1)
-print("using camera from 1")
+#cap.set(cv2.CAP_PROP_SETTINGS, 1)
+# print("using camera from 1")
 
 # except:
 #     cap = cv2.VideoCapture(0)
@@ -59,16 +61,20 @@ def drawHistogram(histogram, histW, histH):
     hist = np.zeros((histH, histW, 3), np.uint8)
     for index, value in enumerate(histogram):
         #normalize the values
-        value = int((value/(max(histogram)))*500)
+        value = int((value/(max(histogram)))*histH)
         cv2.line(hist, (index, histH), (index, histH - value), (255, 255, 0), 1)
 
+    return hist
+
+def calcHistogram(img):
+    hist = cv2.calcHist([img], [0], None, [256], [0, 256])
     return hist
 
 def convertToHistogramFindMaxPeakAndReturnThresh(img, threshToAdd):
     """calculates the histogram, smooths histogram, then plots the histogram of the image. Also plots the peaks"""
     """Purple is the threshold value, white is all the peaks,red is the two max peaks, green is the mean value"""
     img = cv2.GaussianBlur(img, (21,21), 0)
-    histogram = cv2.calcHist([img], [0], None, [256], [0, 256])
+    histogram = calcHistogram(img)
     histogram = cv2.GaussianBlur(histogram, (21, 21), 0)
     #this implementation to find peaks is dam hacky, pls implement more elegant solution
     peaks = [0]*256
@@ -122,7 +128,7 @@ def getTemplate():
     try:
         while True:
             imgTemplate = cv2.imread('templateCreator' + str(sampleNum) + '.png')
-            imgTemplate = imutils.resize(imgTemplate, width=widthImg, height=heightImg)
+            imgTemplate = cv2.resize(imgTemplate, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
 
             #find the general area of the picture
             threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgTemplate, threshToAddForGeneral)
@@ -139,6 +145,7 @@ def getTemplate():
             #Then get the details
             roi = cv2.resize(roi,(widthImg, heightImg), cv2.INTER_LINEAR)
             ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
+            # cv2.imshow("Roi", imgThresh)
 
             # sample = extractFeatureFromImageForKNN(img)
             samples.append(imgThresh)
@@ -201,8 +208,8 @@ def deskewImageBasedOnContour(contour, img):
 
     # set the ROI based on the rotated image
     img = img[y:y + h, x:x + w]
-    print("angle: ", angle)
-    print("x: ", x, "y: ", y, "w: ", w, "h: ",h)
+    # print("angle: ", angle)
+    # print("x: ", x, "y: ", y, "w: ", w, "h: ",h)
 
     return img
 
@@ -226,7 +233,7 @@ def returnLargestAreaOfContours(npaContours):
     #Once youve found the ROI you need to do new thresholding similar to how you found the template
 
     #This is the filtering process if it's an IC or not
-    #TODO 4 - this code is not efficient! Need to find a better way to get the largest contour area!
+
     largestContour = None
 
     try:
@@ -246,39 +253,39 @@ def returnLargestAreaOfContours(npaContours):
             break
     except:
         return None
-
+    # print("The largest contour area is: ", cv2.contourArea(largestContour))
     return largestContour
 
-templates = getTemplate()
-
-while True:
-    #this is creating the response array
+def getICType(img):
+    # this is creating the response array
     response = []
     for ICs in range(0, amountOfICs):
         for number in range(0, numberOfTemplates):
             response.append(ICs)
 
-    ret, img = cap.read()
-
-    #Get the image threshold
+    # Get the image threshold
     imgResized = cv2.resize(img, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
-    # cv2.imshow("resized", imgResized)
+    cv2.imshow("resized", imgResized)
 
-    #TODO - DO THE GRAY, HISTOGRAM VALUE, THRESHOLD CALCULATIONS, BLUR CALCULATIONS ONCE ONLY THEN PASS IT AROUND
-    threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgResized, threshToAddForGeneral)         # get grayscale image
+    # TODO - DO THE GRAY, HISTOGRAM VALUE, THRESHOLD CALCULATIONS, BLUR CALCULATIONS ONCE ONLY THEN PASS IT AROUND
+    threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgResized, threshToAddForGeneral)  # get grayscale image
     imgInverted = cv2.bitwise_not(imgThresh)
 
     # cv2.imshow("General thresh",imgInverted)
-
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgInverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     largestContourInImage = returnLargestAreaOfContours(npaContours)
-    (x,y,w,h) = cv2.boundingRect(largestContourInImage)
-    cv2.rectangle(imgGrayAndBlurred, (x, y), (x+w, y+h), (255,255,255), 2)
-    # cv2.drawContours(img, largestContourInImage, -1, (255,0,0), 2)
+
+    # (x, y, w, h) = cv2.boundingRect(largestContourInImage)
+    # cv2.rectangle(imgGrayAndBlurred, (x, y), (x + w, y + h), (255, 255, 255), 2)
+
+    # cv2.drawContours(imgResized, largestContourInImage, -1, (255,0,0), 2)
+
+    # cv2.imshow("contours", imgResized)
 
     if largestContourInImage is not None:
         # print("The area of the contour is: ", cv2.contourArea(largestContourInImage))
-        #deskew the image
+        # deskew the image
         roi = deskewImageBasedOnContour(largestContourInImage, imgGrayAndBlurred)
         # cv2.imshow("deskewed", roi)
 
@@ -290,33 +297,33 @@ while True:
         ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
         # cv2.imshow("imgThresh", imgThresh)
 
-        #make sure that the roi is the same size as the templates
-        #if the templates are bigger then the program will crash
+        # make sure that the roi is the same size as the templates
+        # if the templates are bigger then the program will crash
         roi = cv2.resize(imgThresh, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
         # cv2.imshow('Image to match', roi)
-
+        cv2.imshow("roi", roi)
         scores = []
 
-        for(templateCount, templateROI) in enumerate(templates):
+        for (templateCount, templateROI) in enumerate(templates):
             result = cv2.matchTemplate(roi, templateROI, cv2.TM_CCOEFF_NORMED)
-            #print(result)
-            (_,score,_,_) = cv2.minMaxLoc(result)
+            # print(result)
+            (_, score, _, _) = cv2.minMaxLoc(result)
             # print(score)
             scores.append(score)
 
         maxScores = max(scores)
         combinedResults = []
 
-        #use knn instead of just mean
+        # use knn instead of just mean
         for x in range(0, k):
             maxIndex = np.argmax(scores)
-            #put the closest inside the combined results array
+            # put the closest inside the combined results array
             combinedResults.append(response.pop(maxIndex))
-            #pop that one from the scores
-            #what you should end up with is the n closest scores in the combinedresults array
+            # pop that one from the scores
+            # what you should end up with is the n closest scores in the combinedresults array
             scores.pop(maxIndex)
 
-        #need to combine the scores into one mean score per IC
+        # need to combine the scores into one mean score per IC
 
         print(combinedResults)
 
@@ -325,34 +332,50 @@ while True:
         arrayOfResults.append(maximumCount)
         # groupOutput.append(str(np.argmax(scores)))
 
-        #return the most frequent of n results
-        #this code will only run once every n frames
+        # return the most frequent of n results
+        # this code will only run once every n frames
         if len(arrayOfResults) == 1:
-            (x, y, w, h) = cv2.boundingRect(largestContourInImage)
-            #np.bincount returns the most frequent result in the array of results
+            # (x, y, w, h) = cv2.boundingRect(largestContourInImage)
+            # np.bincount returns the most frequent result in the array of results
             counts = np.bincount(arrayOfResults)
             maximumCount = np.argmax(counts)
-            string = str(maximumCount)
-            #only show if it's above the acceptable threshold
+            # string = str(maximumCount)
+            # only show if it's above the acceptable threshold
             if maxScores > acceptedThreshold:
                 # cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                print("The IC type is: ",maximumCount)
+                print("The IC type is: ", maximumCount)
+                return maximumCount
             else:
                 # cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 print("No IC found!")
+                return None
             # cv2.imshow('final', img)
-            arrayOfResults = []
-        # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-        # cv2.imshow('final', img)
-        # print('type detected : ' + "".join(groupOutput))
+            # arrayOfResults = []
+            # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            # cv2.imshow('final', img)
+            # print('type detected : ' + "".join(groupOutput))
 
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    if cv2.waitKey(1) == 27: #escape to break
-        break
+    else:
+        print("No contour found!")
 
-cap.release()
-#out.release()
-cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+
+    templates = getTemplate()
+
+    cap = cv2.VideoCapture(0)
+
+    while True:
+        ret, img = cap.read()
+        getICType(img)
+
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) == 27: #escape to break
+            break
+
+    cap.release()
+    #out.release()
+    cv2.destroyAllWindows()
 
 
 '''
