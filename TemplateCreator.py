@@ -7,10 +7,10 @@ import ICRecognition
 cap = cv2.VideoCapture(0)
 #150 images roughly translates to about 40 mb
 #
-# cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
+cap.set(cv2.CAP_PROP_SETTINGS, 1)
 # cap.set(cv2.CAP_PROP_BRIGHTNESS, 0)  # Doesn't work lel
 
-MIN_CONTOUR_AREA = 500
+# MIN_CONTOUR_AREA = 500
 # thresholdValue = 60
 #when you change it here change it in the recognizer as well!
 # threshToAddForDetail = 0

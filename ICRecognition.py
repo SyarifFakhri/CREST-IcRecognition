@@ -8,12 +8,13 @@ from matplotlib import pyplot as plt
 #from PIL import Image
 
 
-MIN_CONTOUR_AREA = 1000
+MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 
 threshToAddForDetail = 0
-threshToAddForGeneral = 5
+threshToAddForGeneral = 0
+histogramIgnoreValue = 150
 
 amountOfICs = 2
 numberOfTemplates = 5
@@ -88,7 +89,7 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img, threshToAdd):
         try:
             if histogram[index] > histogram[index - step] and histogram[index] > histogram[index + step]:
                 #ignore values that are too white, they're just background
-                if index < 200:
+                if index < histogramIgnoreValue:
                     peaks.insert(index, histogram[index][0])
                     # cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
         except:
@@ -139,20 +140,22 @@ def getTemplate():
             imgContours, npaContours, npaHierarchy = cv2.findContours(imgInverted, cv2.RETR_EXTERNAL,
                                                                       cv2.CHAIN_APPROX_SIMPLE)
             contour = returnLargestAreaOfContours(npaContours)
+            if contour is not None:
+                roi = deskewImageBasedOnContour(contour, imgGrayAndBlurred)
 
-            roi = deskewImageBasedOnContour(contour, imgGrayAndBlurred)
+                #Then get the details
+                roi = cv2.resize(roi,(widthImg, heightImg), cv2.INTER_LINEAR)
+                ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
+                # cv2.imshow("Roi", imgThresh)
 
-            #Then get the details
-            roi = cv2.resize(roi,(widthImg, heightImg), cv2.INTER_LINEAR)
-            ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
-            # cv2.imshow("Roi", imgThresh)
+                # sample = extractFeatureFromImageForKNN(img)
+                samples.append(imgThresh)
 
-            # sample = extractFeatureFromImageForKNN(img)
-            samples.append(imgThresh)
-
-            # if sampleNum % 5 == 0:
-                # cv2.imshow("template" + str(sampleNum), imgTemplate)
-            print("template:" + str(sampleNum) + " loaded")
+                # if sampleNum % 5 == 0:
+                    # cv2.imshow("template" + str(sampleNum), imgTemplate)
+                print("template:" + str(sampleNum) + " loaded")
+            else:
+                print("Template: ", str(sampleNum), " - contour is none")
 
             sampleNum = sampleNum + 1
 
