@@ -4,10 +4,10 @@ import numpy as np
 import imutils
 import ICRecognition
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 #150 images roughly translates to about 40 mb
 #
-cap.set(cv2.CAP_PROP_SETTINGS, 1)
+# cap.set(cv2.CAP_PROP_SETTINGS, 1)
 # cap.set(cv2.CAP_PROP_BRIGHTNESS, 0)  # Doesn't work lel
 
 # MIN_CONTOUR_AREA = 500

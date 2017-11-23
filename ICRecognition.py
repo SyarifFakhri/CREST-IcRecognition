@@ -12,8 +12,8 @@ MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 
-threshToAddForDetail = 0
-threshToAddForGeneral = 0
+threshToAddForDetail = 10
+threshToAddForGeneral = 20
 histogramIgnoreValue = 150
 
 amountOfICs = 2
@@ -81,8 +81,8 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img, threshToAdd):
     peaks = [0]*256
 
     step = 1
-    # histW, histH = 256, 500
-    # hist = drawHistogram(histogram, histW, histH)
+    histW, histH = 256, 500
+    hist = drawHistogram(histogram, histW, histH)
 
     """find peaks"""
     for index in range(0, 256, step):
@@ -91,7 +91,7 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img, threshToAdd):
                 #ignore values that are too white, they're just background
                 if index < histogramIgnoreValue:
                     peaks.insert(index, histogram[index][0])
-                    # cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
+                    cv2.line(hist, (index, 0), (index, histH), (255, 255, 255), 1)
         except:
             pass
             #print ("histogram at index: ", index, "gave an error")
@@ -101,9 +101,9 @@ def convertToHistogramFindMaxPeakAndReturnThresh(img, threshToAdd):
     #draw the entire histogram
     #draw the two maxes
 
-    # cv2.line(hist, (maxHist, 0), (maxHist, histH), (0, 0, 255), 1)
-    # cv2.line(hist, (maxHist + threshToAdd, 0), (maxHist + threshToAdd, histH), (0, 255, 0), 1)
-    # cv2.imshow("histogram", hist)
+    cv2.line(hist, (maxHist, 0), (maxHist, histH), (0, 0, 255), 1)
+    cv2.line(hist, (maxHist + threshToAdd, 0), (maxHist + threshToAdd, histH), (0, 255, 0), 1)
+    cv2.imshow("histogram", hist)
 
     return maxHist + threshToAdd
 
@@ -259,7 +259,7 @@ def returnLargestAreaOfContours(npaContours):
     # print("The largest contour area is: ", cv2.contourArea(largestContour))
     return largestContour
 
-def getICType(img):
+def getICType(img, templates):
     # this is creating the response array
     response = []
     for ICs in range(0, amountOfICs):
@@ -272,9 +272,13 @@ def getICType(img):
 
     # TODO - DO THE GRAY, HISTOGRAM VALUE, THRESHOLD CALCULATIONS, BLUR CALCULATIONS ONCE ONLY THEN PASS IT AROUND
     threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgResized, threshToAddForGeneral)  # get grayscale image
+    adaptiveThresh = cv2.adaptiveThreshold(imgGrayAndBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11,2)
+    ret, naiveThreshold = cv2.threshold(imgGrayAndBlurred, 100,255, cv2.THRESH_BINARY)
     imgInverted = cv2.bitwise_not(imgThresh)
 
-    # cv2.imshow("General thresh",imgInverted)
+    cv2.imshow("General thresh",imgInverted)
+    cv2.imshow("adaptive thersh", adaptiveThresh)
+    cv2.imshow("Naive threshold", naiveThreshold)
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgInverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     largestContourInImage = returnLargestAreaOfContours(npaContours)
@@ -290,7 +294,7 @@ def getICType(img):
         # print("The area of the contour is: ", cv2.contourArea(largestContourInImage))
         # deskew the image
         roi = deskewImageBasedOnContour(largestContourInImage, imgGrayAndBlurred)
-        # cv2.imshow("deskewed", roi)
+        cv2.imshow("deskewed", roi)
 
         # cv2.drawContours(imgGrayAndBlurred, largestContourInImage, -1, (255,255,255), 1)
 
@@ -298,7 +302,7 @@ def getICType(img):
 
         # cv2.imshow("deskewed", roi)
         ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
-        # cv2.imshow("imgThresh", imgThresh)
+        cv2.imshow("imgThresh", imgThresh)
 
         # make sure that the roi is the same size as the templates
         # if the templates are bigger then the program will crash
@@ -352,11 +356,11 @@ def getICType(img):
                 # cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 print("No IC found!")
                 return None
-            # cv2.imshow('final', img)
-            # arrayOfResults = []
-            # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            # cv2.imshow('final', img)
-            # print('type detected : ' + "".join(groupOutput))
+                # cv2.imshow('final', img)
+                # arrayOfResults = []
+                # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                # cv2.imshow('final', img)
+                # print('type detected : ' + "".join(groupOutput))
 
     else:
         print("No contour found!")
@@ -366,11 +370,11 @@ if __name__ == '__main__':
 
     templates = getTemplate()
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     while True:
         ret, img = cap.read()
-        getICType(img)
+        getICType(img, templates)
 
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         if cv2.waitKey(1) == 27: #escape to break
