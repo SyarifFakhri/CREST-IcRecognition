@@ -4,9 +4,18 @@ import ICRecognition
 # flag = False
 import cv2
 
-# frameCount = 0
+#zunus IOT stuff
+import Array
+import quickstart
 
-totalFramesToCount = 50
+# frameCount = 0
+#for IOT
+typeArray = []
+idArray = []
+
+arrayKey = {0:"TYPE 1", 1:"TYPE 2", 2:"TYPE 3"}
+
+totalFramesToCount = 10
 try:
     ser = serial.Serial('/COM6', 115200)
     # ser.timeout(0.05)
@@ -63,12 +72,25 @@ while True:
             ##DO ALL THE IC PROCESSING STUFF HERE
             IcType = ICRecognition.getICType(img, templates)
             if IcType is None:
-                IcType = 3
+                print("ICType is none!")
+
             print("DONE")
             ##THEN SEND THE TYPE AND IC AND SEND TO THE ARUDINO TO DO THE TYPE
             print("ICTYPE: ", IcType)
             ser.write(("1" + str(IcType)).encode())
             #first refers to the stepper and second to the type
+
+            #update the array for IOT
+            if IcType in arrayKey:
+                Array.updateArray(typeArray, idArray, IcType, arrayKey[IcType])
+
+        #if recieved 3 from the rpy, it means the current session has ended, upload the array
+        if (values == "3"):
+            #this will save .csv file in the working directory
+            #this has a few dependencies
+            Array.transpose(typeArray, idArray)
+            quickstart.uploadToCloud()
+
 
     if cv2.waitKey(1) == 27:
         break

@@ -12,12 +12,12 @@ MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 
-threshToAddForDetail = 10
+threshToAddForDetail = 30
 threshToAddForGeneral = 20
 histogramIgnoreValue = 150
 
 amountOfICs = 2
-numberOfTemplates = 5
+numberOfTemplates = 10
 widthImg = 300
 heightImg = 200
 k = 3
@@ -129,7 +129,8 @@ def getTemplate():
     try:
         while True:
             imgTemplate = cv2.imread('templateCreator' + str(sampleNum) + '.png')
-            imgTemplate = cv2.resize(imgTemplate, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
+            # imgTemplate = cv2.resize(imgTemplate, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
+            #no need to resize cuz we save it as the correct size already
 
             #find the general area of the picture
             threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgTemplate, threshToAddForGeneral)
@@ -277,8 +278,8 @@ def getICType(img, templates):
     imgInverted = cv2.bitwise_not(imgThresh)
 
     cv2.imshow("General thresh",imgInverted)
-    cv2.imshow("adaptive thersh", adaptiveThresh)
-    cv2.imshow("Naive threshold", naiveThreshold)
+    # cv2.imshow("adaptive thersh", adaptiveThresh)
+    # cv2.imshow("Naive threshold", naiveThreshold)
     imgContours, npaContours, npaHierarchy = cv2.findContours(imgInverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     largestContourInImage = returnLargestAreaOfContours(npaContours)
