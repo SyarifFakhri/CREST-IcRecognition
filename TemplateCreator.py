@@ -28,7 +28,7 @@ cap = cv2.VideoCapture(1)
 # responses = responses.reshape((responses.size,1))
 #End getting of template
 
-count = 11
+count = 1
 
 # def drawHistogram(histogram, histW, histH):
 #
@@ -224,6 +224,7 @@ while True:
 
     # TODO - DO THE GRAY, HISTOGRAM VALUE, THRESHOLD CALCULATIONS, BLUR CALCULATIONS ONCE ONLY THEN PASS IT AROUND
     threshVal, imgGrayAndBlurred, imgThresh = ICRecognition.binarizeImage(imgResized, ICRecognition.threshToAddForGeneral)  # get grayscale image
+
     imgInverted = cv2.bitwise_not(imgThresh)
 
     cv2.imshow("General thresh",imgInverted)

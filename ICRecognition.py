@@ -12,7 +12,7 @@ MIN_CONTOUR_AREA = 500
 acceptedThreshold = 0.1
 #when you change it here change it in the template as well!
 
-threshToAddForDetail = 30
+threshToAddForDetail = 15
 threshToAddForGeneral = 20
 histogramIgnoreValue = 150
 
@@ -169,10 +169,9 @@ def getTemplate():
 
 def deskewImageBasedOnContour(contour, img):
     """This function corrects the rotation of the IC"""
-    """Make sure you give it a color image btw"""
+    """Make sure you give it a gray image btw"""
     # need to deskew the contours
     rect = cv2.minAreaRect(contour)
-
     center = rect[0]
     angle = rect[2]
 
@@ -187,6 +186,11 @@ def deskewImageBasedOnContour(contour, img):
         angle = angle - 90
         w, h = h, w
 
+    #this is to prevent the continous flipping that happens when it's close to 0
+    if angle == -180:
+        angle = 0
+
+    # print(angle)
     x = int(cX) - int(w / 2)
     y = int(cY) - int(h / 2)
 
@@ -206,6 +210,7 @@ def deskewImageBasedOnContour(contour, img):
         y = 0
 
     # new center x is no longer the center here btw, it's now the x value of the rectangle
+
     rot = cv2.getRotationMatrix2D(center, angle, 1)
 
     img = cv2.warpAffine(img, rot, (cols, rows))
@@ -273,9 +278,11 @@ def getICType(img, templates):
 
     # TODO - DO THE GRAY, HISTOGRAM VALUE, THRESHOLD CALCULATIONS, BLUR CALCULATIONS ONCE ONLY THEN PASS IT AROUND
     threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgResized, threshToAddForGeneral)  # get grayscale image
-    adaptiveThresh = cv2.adaptiveThreshold(imgGrayAndBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11,2)
-    ret, naiveThreshold = cv2.threshold(imgGrayAndBlurred, 100,255, cv2.THRESH_BINARY)
+    # adaptiveThresh = cv2.adaptiveThreshold(imgGrayAndBlurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11,2)
+    # ret, naiveThreshold = cv2.threshold(imgGrayAndBlurred, 100,255, cv2.THRESH_BINARY)
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 20))
     imgInverted = cv2.bitwise_not(imgThresh)
+    # imgThresh = cv2.morphologyEx(imgInverted, cv2.MORPH_ERODE, kernel)
 
     cv2.imshow("General thresh",imgInverted)
     # cv2.imshow("adaptive thersh", adaptiveThresh)
@@ -287,9 +294,9 @@ def getICType(img, templates):
     # (x, y, w, h) = cv2.boundingRect(largestContourInImage)
     # cv2.rectangle(imgGrayAndBlurred, (x, y), (x + w, y + h), (255, 255, 255), 2)
 
-    # cv2.drawContours(imgResized, largestContourInImage, -1, (255,0,0), 2)
+    cv2.drawContours(imgResized, largestContourInImage, -1, (255,0,0), 2)
 
-    # cv2.imshow("contours", imgResized)
+    cv2.imshow("contours", imgResized)
 
     if largestContourInImage is not None:
         # print("The area of the contour is: ", cv2.contourArea(largestContourInImage))
@@ -331,37 +338,38 @@ def getICType(img, templates):
             # what you should end up with is the n closest scores in the combinedresults array
             scores.pop(maxIndex)
 
-        # need to combine the scores into one mean score per IC
 
-        print(combinedResults)
+        print("combined results: ", combinedResults)
 
-        count = np.bincount(combinedResults)
-        maximumCount = np.argmax(count)
-        arrayOfResults.append(maximumCount)
+        (values, counts) = np.unique(combinedResults, return_counts=True)
+        maximumCountInd = np.argmax(counts)
+        maximumCount = combinedResults[maximumCountInd]
+        # arrayOfResults.append(maximumCount)
         # groupOutput.append(str(np.argmax(scores)))
 
         # return the most frequent of n results
         # this code will only run once every n frames
-        if len(arrayOfResults) == 1:
+        # if len(arrayOfResults) == 1:
             # (x, y, w, h) = cv2.boundingRect(largestContourInImage)
-            # np.bincount returns the most frequent result in the array of results
-            counts = np.bincount(arrayOfResults)
-            maximumCount = np.argmax(counts)
-            # string = str(maximumCount)
-            # only show if it's above the acceptable threshold
-            if maxScores > acceptedThreshold:
-                # cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                print("The IC type is: ", maximumCount)
-                return maximumCount
-            else:
-                # cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                print("No IC found!")
-                return None
-                # cv2.imshow('final', img)
-                # arrayOfResults = []
-                # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                # cv2.imshow('final', img)
-                # print('type detected : ' + "".join(groupOutput))
+        # np.bincount returns the most frequent result in the array of results
+        # counts = np.bincount(arrayOfResults)
+        # maximumCount = np.argmax(counts)
+        # print(maximumCount)
+        # string = str(maximumCount)
+        # only show if it's above the acceptable threshold
+        if maxScores > acceptedThreshold:
+            # cv2.putText(img, "Type " + "".join(string) + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            print("The IC type is: ", maximumCount)
+            return maximumCount
+        else:
+            # cv2.putText(img, "No IC found! " + "Area of contour: " + str(cv2.contourArea(largestContourInImage)), (x, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            print("No IC found!")
+            return None
+            # cv2.imshow('final', img)
+            # arrayOfResults = []
+            # cv2.putText(img, "Type " + "".join(groupOutput), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            # cv2.imshow('final', img)
+            # print('type detected : ' + "".join(groupOutput))
 
     else:
         print("No contour found!")
