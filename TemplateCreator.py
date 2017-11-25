@@ -28,7 +28,7 @@ cap = cv2.VideoCapture(1)
 # responses = responses.reshape((responses.size,1))
 #End getting of template
 
-count = 1
+count = 29
 
 # def drawHistogram(histogram, histW, histH):
 #
@@ -269,7 +269,7 @@ while True:
         # sample = extractFeatureFromImageForKNN(img)
 
         # cv2.imwrite("templateCreatorTest" + str(count) + ".png", imgTemplate)
-        cv2.imwrite("templateCreator" + str(count) + ".png", imgResized)
+        cv2.imwrite("type0Template/" + "templateCreator" + str(count) + ".png", imgResized)
 
         print("Image saved" + str(count))
         count += 1

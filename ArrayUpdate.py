@@ -47,7 +47,7 @@ def transpose( array, idArray, keyDictionary):
 
     combine = np.stack((idArray,array), axis=-1)
 
-    finalCombine = np.stack((writeKeyArray, finalCountArray), ax is=-1)
+    finalCombine = np.stack((writeKeyArray, finalCountArray), axis=-1)
 
     print(finalCombine)
 
@@ -69,19 +69,4 @@ def transpose( array, idArray, keyDictionary):
     file5.Upload()  # Upload the file.
     print("success")
     # title: cat.png, mimeType: image/png
-
-array = []
-idArray = []
-keyDictionary = {1:"zunu", 2:"syarif"}
-updateArray(array,idArray, 1, keyDictionary[1])
-updateArray(array,idArray, 1, keyDictionary[1])
-updateArray(array,idArray, 1, keyDictionary[1])
-
-updateArray(array,idArray, 2, keyDictionary[2])
-updateArray(array,idArray, 2, keyDictionary[2])
-
-
-transpose(array,idArray, keyDictionary)
-
-
 

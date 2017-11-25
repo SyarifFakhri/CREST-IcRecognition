@@ -15,9 +15,9 @@ idArray = []
 
 arrayKey = {0:"TYPE 1", 1:"TYPE 2", 2:"TYPE 3"}
 
-totalFramesToCount = 10
+totalFramesToCount = 5
 try:
-    ser = serial.Serial('/COM7', 115200)
+    ser = serial.Serial('/COM9', 115200)
     # ser.timeout(0.05)
     print("connection established successfully!")
     # ser.write(str("ACK").encode())
@@ -25,7 +25,7 @@ try:
 except Exception as e:
     print("Connection with /COM7 failed! trying /COM6")
     try:
-        ser = serial.Serial('/COM6', 115200)
+        ser = serial.Serial('/COM7', 115200)
         print("Connection established successfully!")
     except Exception as e:
         print("Could not find!")
@@ -47,7 +47,7 @@ sleep(1) #give the connection a second to settle
 # while (ser.inWaiting() > 0): # check if there are available ports to read
 
 cap = cv2.VideoCapture(1)
-templates = ICRecognition.getTemplate()
+templates, responseArray = ICRecognition.getTemplate()
 
 while True:
     ret, img = cap.read()
@@ -76,11 +76,11 @@ while True:
 
         if (values == "1"):
             ##DO ALL THE IC PROCESSING STUFF HERE
-            IcType = ICRecognition.getICType(img, templates)
+            IcType = ICRecognition.getICType(img, templates, responseArray)
 
             if IcType is None:
                 print("ICType is none!")
-                IcType = 2
+                IcType = 3
 
             print("DONE")
             ##THEN SEND THE TYPE AND IC AND SEND TO THE ARUDINO TO DO THE TYPE
@@ -93,7 +93,7 @@ while True:
             #update the array for IOT
             if IcType in arrayKey:
                 ArrayUpdate.updateArray(typeArray, idArray, IcType, arrayKey[IcType])
-                print("Updated array")
+                # print("Updated array")
 
         #if recieved 3 from the rpy, it means the current session has ended, upload the array
         if (values == "3"):
@@ -102,6 +102,8 @@ while True:
             print("Uploading to the cloud...")
             try:
              ArrayUpdate.transpose(typeArray, idArray, arrayKey)
+             typeArray = []
+             idArray = []
             except Exception as e:
                 print(e)
                 print("Could not connect!")

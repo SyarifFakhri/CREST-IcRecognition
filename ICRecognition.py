@@ -16,11 +16,11 @@ threshToAddForDetail = 15
 threshToAddForGeneral = 20
 histogramIgnoreValue = 150
 
-amountOfICs = 2
-numberOfTemplates = 10
+# amountOfICs = 3
+# numberOfTemplates = 14
 widthImg = 300
 heightImg = 200
-k = 3
+k = 5
 
 arrayOfResults = []
 
@@ -121,57 +121,81 @@ def binarizeImage(img, withThreshToAdd):
     return threshVal, imgGrayAndBlurred, img
 
 def getTemplate():
-    global sampleNum
+    # global sampleNum
     # Begin Getting of Template
     #it will just cycle through images, possibly until it can't anymore
 
     samples = []
+    sampleNum = 1
+    responseArray = []
     try:
-        while True:
-            imgTemplate = cv2.imread('templateCreator' + str(sampleNum) + '.png')
-            # imgTemplate = cv2.resize(imgTemplate, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
-            #no need to resize cuz we save it as the correct size already
+        # while True:
+        for folder in range(0, 3):
+            try:
+                while True:
+                    imgTemplate = cv2.imread('type' + str(folder) + 'Template' + '/templateCreator' + str(sampleNum) + '.png')
+                    # imgTemplate = cv2.resize(imgTemplate, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
+                    #no need to resize cuz we save it as the correct size already
 
-            #find the general area of the picture
-            threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgTemplate, threshToAddForGeneral)
-            imgInverted = cv2.bitwise_not(imgThresh)
-            # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-            # img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
+                    #find the general area of the picture
+                    threshVal, imgGrayAndBlurred, imgThresh = binarizeImage(imgTemplate, threshToAddForGeneral)
+                    imgInverted = cv2.bitwise_not(imgThresh)
+                    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+                    # img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
 
-            imgContours, npaContours, npaHierarchy = cv2.findContours(imgInverted, cv2.RETR_EXTERNAL,
-                                                                      cv2.CHAIN_APPROX_SIMPLE)
-            contour = returnLargestAreaOfContours(npaContours)
-            if contour is not None:
-                roi = deskewImageBasedOnContour(contour, imgGrayAndBlurred)
+                    imgContours, npaContours, npaHierarchy = cv2.findContours(imgInverted, cv2.RETR_EXTERNAL,
+                                                                              cv2.CHAIN_APPROX_SIMPLE)
+                    contour = returnLargestAreaOfContours(npaContours)
+                    if contour is not None:
+                        roi = deskewImageBasedOnContour(contour, imgGrayAndBlurred)
 
-                #Then get the details
-                roi = cv2.resize(roi,(widthImg, heightImg), cv2.INTER_LINEAR)
-                ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
-                # cv2.imshow("Roi", imgThresh)
+                        #Then get the details
+                        roi = cv2.resize(roi,(widthImg, heightImg), cv2.INTER_LINEAR)
+                        ret, imgThresh = cv2.threshold(roi, threshVal + threshToAddForDetail, 255, cv2.THRESH_BINARY)
+                        # cv2.imshow("Roi", imgThresh)
 
-                # sample = extractFeatureFromImageForKNN(img)
-                samples.append(imgThresh)
+                        # sample = extractFeatureFromImageForKNN(img)
+                        samples.append(imgThresh)
 
-                # if sampleNum % 5 == 0:
-                    # cv2.imshow("template" + str(sampleNum), imgTemplate)
-                print("template:" + str(sampleNum) + " loaded")
-            else:
-                print("Template: ", str(sampleNum), " - contour is none")
+                        # if sampleNum % 5 == 0:
+                            # cv2.imshow("template" + str(sampleNum), imgTemplate)
+                        print("template:" + str(sampleNum) + " loaded")
+                    else:
+                        print("Template: ", str(sampleNum), " - contour is none")
 
-            sampleNum = sampleNum + 1
+                    responseArray.append(folder)
+                    sampleNum = sampleNum + 1
+            except Exception as e:
+                print(e)
+                print("folder from folder", folder, "was read, with the last template being ", sampleNum)
 
-    except:
+            sampleNum = 1
+
+    #have to create the response array based upon what was in each chip
+        print(responseArray)
+    except Exception as e:
         print("There are no more file templates! Last count was: ", sampleNum - 1)
         # cv2.imshow("originalTemplate", imgTemplate)
+        print(e)
 
     #TODO - set the size based on automatic parameters
-    return samples
+    return samples, responseArray
 
 def deskewImageBasedOnContour(contour, img):
     """This function corrects the rotation of the IC"""
     """Make sure you give it a gray image btw"""
     # need to deskew the contours
-    rect = cv2.minAreaRect(contour)
+    # rect = cv2.minAreaRect(contour)
+
+    # cv2.imshow("non approximated", img)
+    # epsilon = 0. * cv2.arcLength(contour, True)
+    # approx = cv2.approxPolyDP(contour, epsilon, True)
+    approx = cv2.convexHull(contour)
+    # cv2.drawContours(img, [approx], 0, (0,0, 255), 2)
+
+    # cv2.imshow("approximated", img)
+
+    rect = cv2.minAreaRect(approx)
     center = rect[0]
     angle = rect[2]
 
@@ -265,13 +289,13 @@ def returnLargestAreaOfContours(npaContours):
     # print("The largest contour area is: ", cv2.contourArea(largestContour))
     return largestContour
 
-def getICType(img, templates):
+def getICType(img, templates, responseArray):
     # this is creating the response array
-    response = []
-    for ICs in range(0, amountOfICs):
-        for number in range(0, numberOfTemplates):
-            response.append(ICs)
-
+    # response = []
+    # for ICs in range(0, amountOfICs):
+    #     for number in range(0, numberOfTemplates):
+    #         response.append(ICs)
+    response = responseArray
     # Get the image threshold
     imgResized = cv2.resize(img, (widthImg, heightImg), interpolation=cv2.INTER_LINEAR)
     cv2.imshow("resized", imgResized)
@@ -330,20 +354,30 @@ def getICType(img, templates):
         combinedResults = []
 
         # use knn instead of just mean
-        for x in range(0, k):
-            maxIndex = np.argmax(scores)
+        #get the maximum k indices
+        npScores = np.array(scores)
+        maxScoresArray = npScores.argsort()[-k:][::-1]
+
+        for x in maxScoresArray:
+            # print(scores)
+            # maxIndex = np.argmax(scores)
             # put the closest inside the combined results array
-            combinedResults.append(response.pop(maxIndex))
+            combinedResults.append(responseArray[x])
             # pop that one from the scores
             # what you should end up with is the n closest scores in the combinedresults array
-            scores.pop(maxIndex)
+            # scores.pop(maxIndex)
 
 
         print("combined results: ", combinedResults)
 
-        (values, counts) = np.unique(combinedResults, return_counts=True)
-        maximumCountInd = np.argmax(counts)
-        maximumCount = combinedResults[maximumCountInd]
+
+        # (values, counts) = np.unique(combinedResults, return_counts=True)
+        # maximumCountInd = np.argmax(counts)
+        # maximumCount = combinedResults[maximumCountInd]
+        # combinedResults = [1,1, 1 , 1, 1, 1]
+        counts = np.bincount(combinedResults)
+        maximumCount = np.argmax(counts)
+
         # arrayOfResults.append(maximumCount)
         # groupOutput.append(str(np.argmax(scores)))
 
@@ -377,13 +411,13 @@ def getICType(img, templates):
 
 if __name__ == '__main__':
 
-    templates = getTemplate()
+    templates, responseArray = getTemplate()
 
     cap = cv2.VideoCapture(1)
 
     while True:
         ret, img = cap.read()
-        getICType(img, templates)
+        getICType(img, templates, responseArray)
 
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         if cv2.waitKey(1) == 27: #escape to break
